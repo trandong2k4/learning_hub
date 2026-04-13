@@ -74,14 +74,7 @@
 			<version>20240303</version>
 		</dependency>
 
-		<!-- PostgreSQL Driver (dùng cho Render) -->
-		<!-- <dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
-		</dependency> -->
-
-		<!-- PostgreSQL Localhost -->
+		<!-- PostgreSQL Driver -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
