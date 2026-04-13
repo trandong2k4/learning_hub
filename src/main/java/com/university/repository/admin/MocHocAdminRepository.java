@@ -24,7 +24,7 @@ public interface MocHocAdminRepository extends JpaRepository<MonHoc, UUID> {
              SELECT new com.university.dto.response.admin.MonHocAdminResponseDTO(
                  mh.id,
                  mh.maMonHoc,
-                 mh.tenMonHOc,
+                 mh.tenMonHoc,
                  mh.soTinChi,
                  mh.moTa
              )
@@ -36,7 +36,7 @@ public interface MocHocAdminRepository extends JpaRepository<MonHoc, UUID> {
              SELECT new com.university.dto.response.admin.MonHocAdminResponseDTO(
                  mh.id,
                  mh.maMonHoc,
-                 mh.tenMonHOc,
+                 mh.tenMonHoc,
                  mh.soTinChi,
                  mh.moTa
              )
@@ -49,11 +49,11 @@ public interface MocHocAdminRepository extends JpaRepository<MonHoc, UUID> {
             SELECT new com.university.dto.response.admin.MonHocAdminResponseDTO(
                   mh.id,
                   mh.maMonHoc,
-                  mh.tenMonHOc,
+                  mh.tenMonHoc,
                   mh.soTinChi,
                   mh.moTa
               )
-              FROM MonHOc mh
+              FROM MonHoc mh
               WHERE LOWER(mh.tenMonHoc) LIKE LOWER(CONCAT('%',:keyword,'%'))
              """)
     List<MonHocAdminResponseDTO> findMonHocByTen(@Param("keyword") String keyword);

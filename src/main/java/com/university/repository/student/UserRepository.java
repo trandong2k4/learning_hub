@@ -1,4 +1,4 @@
-package com.university.repository;
+package com.university.repository.student;
 
 import java.util.Optional;
 import java.util.UUID;
