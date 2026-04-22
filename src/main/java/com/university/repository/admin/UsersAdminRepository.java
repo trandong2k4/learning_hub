@@ -22,8 +22,27 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
     @Query("SELECT u.userName FROM Users u")
     List<String> findAllUserNames();
 
-    @Query("SELECT u FROM Users u WHERE u.userName = :username")
-    Users findByUserName(@Param("username") String username);
+    @Query("""
+             SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(
+                 u.id,
+                 u.userName,
+                 u.passWord,
+                 u.email,
+                 u.cccd,
+                 u.hoTen,
+                 u.diaChi,
+                 u.gioiTinh,
+                 u.ngaySinh,
+                 u.soDienThoai,
+                 u.trangThai,
+                 u.ghiChu,
+                 u.createAt,
+                 u.updateAt
+             )
+             FROM Users u
+             WHERE u.userName = :username
+            """)
+    UsersAdminResponseDTO findByUserName(@Param("username") String username);
 
     @Query("SELECT u.userName FROM Users u")
     List<String> findAllUserName();
@@ -33,9 +52,9 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
                 FROM Users u
                 JOIN u.dUserRoles ur
                 JOIN ur.role r
-                WHERE u.userName = :username
+                WHERE u.id = :userId
             """)
-    List<String> findALlNameRoleByUserName(@Param("username") String username);
+    List<String> findALlNameRoleByUserId(@Param("userId") UUID userId);
 
     @Query("""
              SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(

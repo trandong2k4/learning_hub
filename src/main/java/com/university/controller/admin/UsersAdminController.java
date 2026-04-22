@@ -32,6 +32,11 @@ public class UsersAdminController {
         return ResponseEntity.ok(usersAdminService.getAll());
     }
 
+    @GetMapping("/list-role")
+    public ResponseEntity<List<String>> getdSNameRole(@RequestParam("userId") UUID id) {
+        return ResponseEntity.ok(usersAdminService.dSNameRoleUSers(id));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UsersAdminResponseDTO> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(usersAdminService.getById(id));

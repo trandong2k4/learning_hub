@@ -22,10 +22,10 @@ public class HocVienProfileController {
     public HocVienProfileController(HocVienProfileService service) {
         this.service = service;
     }
-    
+
     // @GetMapping("/test")
     // public String test(){
-    //      return "API OK";
+    // return "API OK";
     // }
 
     @GetMapping("/{userId}")

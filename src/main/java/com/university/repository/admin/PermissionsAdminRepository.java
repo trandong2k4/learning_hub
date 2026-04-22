@@ -15,6 +15,24 @@ import java.util.UUID;
 @Repository
 public interface PermissionsAdminRepository extends JpaRepository<Permissions, UUID> {
 
+    // Lấy danh sách maPermissions dựa vào username
+    // Truy vấn đi qua: User -> UserRole -> Role -> RolePermissions -> Permissions
+    @Query("SELECT DISTINCT p.maPermissions FROM Permissions p " +
+            "JOIN p.dRolePermissions rp " +
+            "JOIN rp.role r " +
+            "JOIN r.dUserRole ur " +
+            "JOIN ur.users u " +
+            "WHERE u.userName = :username")
+    List<String> findMaPermissionsByUserName(@Param("username") String username);
+
+    // Tương tự nhưng lấy theo UserId (UUID)
+    @Query("SELECT DISTINCT p.maPermissions FROM Permissions p " +
+            "JOIN p.dRolePermissions rp " +
+            "JOIN rp.role r " +
+            "JOIN r.dUserRole ur " +
+            "WHERE ur.users.id = :userId")
+    List<String> findMaPermissionsByUserId(@Param("userId") UUID userId);
+
     @Query("""
             SELECT new com.university.dto.response.admin.PermissionsAdminResponseDTO(
                 p.id,

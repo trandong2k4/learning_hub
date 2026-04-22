@@ -16,12 +16,15 @@ public class UsersRoleAdminResponseDTO {
     private UUID id;
     private UUID userId;
     private UUID roleId;
-    private UUID userName;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+    private String userName;
+
+    @JsonFormat(pattern = "dd/MM/yyyy : HH:mm:ss")
     private LocalDateTime createdAt;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+
+    @JsonFormat(pattern = "dd/MM/yyyy : HH:mm:ss")
     private LocalDateTime updatedAt;
-    private UUID maRole;
+
+    private String maRole;
 
     public interface UserRoleView {
         UUID getId();

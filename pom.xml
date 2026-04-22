@@ -74,7 +74,7 @@
 			<version>20240303</version>
 		</dependency>
 
-		<!-- PostgreSQL Driver -->
+		<!-- PostgreSQL Driver (dùng cho Render) -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>

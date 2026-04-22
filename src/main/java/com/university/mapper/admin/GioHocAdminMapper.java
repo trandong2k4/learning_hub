@@ -1,15 +1,11 @@
 package com.university.mapper.admin;
 
-import org.springframework.stereotype.Component;
-
 import com.university.dto.request.admin.GioHocAdminRequestDTO;
 import com.university.dto.response.admin.GioHocAdminResponseDTO;
 import com.university.entity.GioHoc;
-
-import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @Component
-@RequiredArgsConstructor
 public class GioHocAdminMapper {
 
     public GioHoc toEntity(GioHocAdminRequestDTO dto) {
@@ -21,20 +17,20 @@ public class GioHocAdminMapper {
         return gioHoc;
     }
 
-    public GioHocAdminResponseDTO updateEntity(GioHoc gioHoc, GioHocAdminRequestDTO dto) {
+    public void updateEntity(GioHoc gioHoc, GioHocAdminRequestDTO dto) {
         gioHoc.setMaGioHoc(dto.getMaGioHoc());
         gioHoc.setTenGioHoc(dto.getTenGioHoc());
         gioHoc.setThoiGianBatDau(dto.getThoiGianBatDau());
         gioHoc.setThoiGianKetThuc(dto.getThoiGianKetThuc());
-        return toResponseDTO(gioHoc);
     }
 
     public GioHocAdminResponseDTO toResponseDTO(GioHoc entity) {
-        GioHocAdminResponseDTO gioHoc = new GioHocAdminResponseDTO();
-        gioHoc.setMaGioHoc(entity.getMaGioHoc());
-        gioHoc.setTenGioHoc(entity.getTenGioHoc());
-        gioHoc.setThoiGianBatDau(entity.getThoiGianBatDau());
-        gioHoc.setThoiGianKetThuc(entity.getThoiGianKetThuc());
-        return gioHoc;
+        GioHocAdminResponseDTO dto = new GioHocAdminResponseDTO();
+        dto.setId(entity.getId());
+        dto.setMaGioHoc(entity.getMaGioHoc());
+        dto.setTenGioHoc(entity.getTenGioHoc());
+        dto.setThoiGianBatDau(entity.getThoiGianBatDau());
+        dto.setThoiGianKetThuc(entity.getThoiGianKetThuc());
+        return dto;
     }
 }

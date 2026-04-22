@@ -81,8 +81,8 @@ public class UsersAdminService implements CustomUserDetailsService {
         return usersAdminRepository.findUsersByHoTen(hoTen);
     }
 
-    public Users getByUserName(String userName) {
-        Users users = usersAdminRepository.findByUserName(userName);
+    public UsersAdminResponseDTO getByUserName(String userName) {
+        UsersAdminResponseDTO users = usersAdminRepository.findByUserName(userName);
         return users;
     }
 
@@ -111,20 +111,20 @@ public class UsersAdminService implements CustomUserDetailsService {
         usersAdminRepository.deleteUsersAll();
     }
 
-    public List<String> dSNameRoleUSers(String username) {
-        return usersAdminRepository.findALlNameRoleByUserName(username);
+    public List<String> dSNameRoleUSers(UUID id) {
+        return usersAdminRepository.findALlNameRoleByUserId(id);
     }
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        UsersAdminResponseDTO user = usersAdminRepository.findByUserName(username);
 
-        Users user = usersAdminRepository.findByUserName(username);
         if (user == null) {
             throw new UsernameNotFoundException("Không tìm thấy user: " + username);
         }
 
         // Lấy List role từ database (phương thức findALlNameRoleByUserName)
-        List<String> roleNames = usersAdminRepository.findALlNameRoleByUserName(username);
+        List<String> roleNames = usersAdminRepository.findALlNameRoleByUserId(user.getId());
 
         // Chuyển thành GrantedAuthority
         List<SimpleGrantedAuthority> authorities = roleNames.stream()
@@ -133,14 +133,14 @@ public class UsersAdminService implements CustomUserDetailsService {
 
         // Nếu không có role nào thì fallback về USER
         if (authorities.isEmpty()) {
-            authorities = List.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            authorities = List.of(new SimpleGrantedAuthority("ROLE_GUEST"));
         }
 
         return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
-                .password(user.getPassword())
+                .username(user.getUserName())
+                .password(user.getPassWord())
                 .authorities(authorities)
-                .disabled(!Boolean.TRUE.equals(user.isTrangThai()))
+                .disabled(!Boolean.TRUE.equals(user.getTrangThai()))
                 .build();
     }
 }

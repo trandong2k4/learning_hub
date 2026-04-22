@@ -1,6 +1,8 @@
 package com.university.config;
 
 import com.university.util.JwtUtil;
+
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -54,9 +56,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                        log.info("Authentication set successfully for user: {}", username);
+                    } else {
+                        log.warn("Token invalid or expired for user: {}", username);
                     }
                 }
             }
+        } catch (ExpiredJwtException ex) {
+            log.warn("JWT expired: {}", ex.getMessage()); // Chỉ warn, không lỗi nghiêm trọng
         } catch (Exception ex) {
             log.error("Không thể thiết lập authentication: {}", ex.getMessage());
         }

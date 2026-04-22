@@ -11,6 +11,8 @@ import com.university.service.auth.CustomUserDetailsService;
 import com.university.service.auth.RefreshTokenService;
 import com.university.util.JwtUtil;
 
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -41,8 +43,8 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<RegisterResponseDTO> register(@RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    public ResponseEntity<RegisterResponseDTO> register(@RequestBody RegisterRequest request, UUID id) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(id, request));
     }
 
     @PostMapping("/refresh")
