@@ -1,23 +1,17 @@
 package com.university.service.auth;
 
-import com.university.dto.request.auth.RegisterRequest;
 import com.university.dto.response.admin.UsersAdminResponseDTO;
 import com.university.dto.response.auth.LoginResponseDTO;
-import com.university.dto.response.auth.RegisterResponseDTO;
-import com.university.entity.Users;
 import com.university.exception.SimpleMessageException;
 import com.university.repository.admin.PermissionsAdminRepository;
 import com.university.repository.admin.UsersAdminRepository;
 import com.university.util.JwtUtil;
-
 import jakarta.transaction.Transactional;
-
-import java.util.List;
-import java.util.UUID;
-
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class AuthService {
@@ -29,8 +23,11 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final PermissionsAdminRepository pr;
 
-    public AuthService(UsersAdminRepository userRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
-            CustomUserDetailsService cUserDetailsService, RefreshTokenService refreshTokenService,
+    public AuthService(UsersAdminRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtUtil jwtUtil,
+            CustomUserDetailsService cUserDetailsService,
+            RefreshTokenService refreshTokenService,
             PermissionsAdminRepository pRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -40,20 +37,10 @@ public class AuthService {
         this.pr = pRepository;
     }
 
-    public RegisterResponseDTO register(UUID id, RegisterRequest request) {
-        Users user = userRepository.findById(id).orElseThrow();
-        user.setUserName(request.getUserName());
-        user.setPassWord(passwordEncoder.encode(request.getPassWord()));
-        user.setCreateAt(request.getCreateDate());
-        user = userRepository.save(user);
-
-        return new RegisterResponseDTO(user.getId(), user.getUsername(), user.getCreateAt());
-    }
-
     @Transactional
     public LoginResponseDTO authenticate(String username, String rawPassword) {
 
-        UsersAdminResponseDTO user = userRepository.findByUserName(username);
+        UsersAdminResponseDTO user = userRepository.findByUserNameDTO(username);
         if (user == null) {
             throw new SimpleMessageException("Tài khoản hoặc mật khẩu không đúng");
         }
@@ -67,25 +54,19 @@ public class AuthService {
             throw new SimpleMessageException("Tài khoản hoặc mật khẩu không đúng");
         }
 
-        // Lấy UserDetails có đầy đủ roles
         UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
 
-        // Tạo access token (15 phút)
-        String accessToken = jwtUtil.generateAccessToken(userDetails);
+        List<String> permissions = pr.findMaPermissionsByUserId(user.getId());
 
-        // Tạo refresh token (7 ngày) - có thể là JWT hoặc random string
+        String accessToken = jwtUtil.generateAccessToken(userDetails, permissions);
         String refreshToken = jwtUtil.generateRefreshToken(username);
 
         refreshTokenService.saveRefreshToken(user.getUserName(), refreshToken);
 
-        // Lấy roles để trả về frontend (drole)
         List<String> rolesForFrontend = userDetails.getAuthorities().stream()
                 .map(auth -> auth.getAuthority().replace("ROLE_", ""))
                 .toList();
 
-        List<String> dPermissions = pr.findMaPermissionsByUserId(user.getId());
-
-        new LoginResponseDTO();
         return LoginResponseDTO.builder()
                 .id(user.getId())
                 .userName(user.getUserName())
@@ -93,9 +74,7 @@ public class AuthService {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .dRole(rolesForFrontend)
-                .dPermissions(dPermissions)
                 .message("Đăng nhập thành công")
                 .build();
-
     }
 }

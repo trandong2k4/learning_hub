@@ -74,7 +74,7 @@
 			<version>20240303</version>
 		</dependency>
 
-		<!-- PostgreSQL Driver (dùng cho Render) -->
+		<!-- PostgreSQL -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
@@ -114,11 +114,11 @@
 		</dependency>
 
 		<!-- DevTools/ restart lai server nhanh-->
-		<dependency>
+		<!-- <dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
 			<optional>true</optional>
-		</dependency>
+		</dependency> -->
 
 		<!-- Spring Boot Mail -->
 		<dependency>
@@ -130,8 +130,9 @@
 		<dependency>
 			<groupId>com.sendgrid</groupId>
 			<artifactId>sendgrid-java</artifactId>
-			<version>4.10.2</version>
+			<version>4.10.3</version>
 		</dependency>
+
 
 		<!-- Redis -->
 		<dependency>
@@ -173,6 +174,13 @@
 			<groupId>com.alibaba</groupId>
 			<artifactId>easyexcel</artifactId>
 			<version>3.3.2</version>
+		</dependency>
+
+		<!-- Spring Components Indexer -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context-indexer</artifactId>
+			<optional>true</optional>
 		</dependency>
 	</dependencies>
 

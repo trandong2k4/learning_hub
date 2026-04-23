@@ -36,10 +36,24 @@ public class UsersAdminResponseDTO {
 
         String getUserName();
 
+        String getPassWord();
+
         String getEmail();
+
+        String getCccd();
 
         String getHoTen();
 
+        String getDiaChi();
+
+        String getGioiTinh();
+
+        String getNgaySinh();
+
+        String getSoDienThoai();
+
         Boolean getTrangThai();
+
+        String getGhiChu();
     }
 }

@@ -20,7 +20,6 @@ public class LoginResponseDTO {
     private String accessToken;
     private String refreshToken;
     List<String> dRole;
-    List<String> dPermissions;
     private String message;
 
 }

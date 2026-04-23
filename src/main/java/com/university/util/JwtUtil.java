@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -34,12 +35,18 @@ public class JwtUtil {
     }
 
     // Tạo Access Token (ngắn hạn)
-    public String generateAccessToken(UserDetails userDetails) {
+    public String generateAccessToken(UserDetails userDetails, List<String> permissions) {
         Map<String, Object> claims = new HashMap<>();
+
+        // roles
         claims.put("roles", userDetails.getAuthorities()
                 .stream()
                 .map(auth -> auth.getAuthority())
                 .toList());
+
+        claims.put("permissions", permissions);
+
+        claims.put("tokenType", "access");
 
         return Jwts.builder()
                 .claims(claims)
@@ -64,6 +71,11 @@ public class JwtUtil {
                 .compact();
     }
 
+    public List<String> extractPermissions(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("permissions", List.class);
+    }
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -80,6 +92,15 @@ public class JwtUtil {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public boolean isAccessToken(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            return "access".equals(claims.get("tokenType"));
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {

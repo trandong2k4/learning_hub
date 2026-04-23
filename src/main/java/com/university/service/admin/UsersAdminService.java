@@ -61,7 +61,7 @@ public class UsersAdminService implements CustomUserDetailsService {
     }
 
     public List<UsersAdminResponseDTO> getAll() {
-        return usersAdminRepository.FindAllDTO();
+        return usersAdminRepository.findAllDTO();
     }
 
     public UsersAdminResponseDTO getById(UUID id) {
@@ -82,7 +82,7 @@ public class UsersAdminService implements CustomUserDetailsService {
     }
 
     public UsersAdminResponseDTO getByUserName(String userName) {
-        UsersAdminResponseDTO users = usersAdminRepository.findByUserName(userName);
+        UsersAdminResponseDTO users = usersAdminRepository.findByUserNameDTO(userName);
         return users;
     }
 
@@ -108,7 +108,8 @@ public class UsersAdminService implements CustomUserDetailsService {
 
     @Transactional
     public void deleteAll() {
-        usersAdminRepository.deleteUsersAll();
+        usersAdminRepository.deleteAll();
+        ;
     }
 
     public List<String> dSNameRoleUSers(UUID id) {
@@ -117,7 +118,7 @@ public class UsersAdminService implements CustomUserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UsersAdminResponseDTO user = usersAdminRepository.findByUserName(username);
+        UsersAdminResponseDTO user = usersAdminRepository.findByUserNameDTO(username);
 
         if (user == null) {
             throw new UsernameNotFoundException("Không tìm thấy user: " + username);

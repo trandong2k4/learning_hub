@@ -3,21 +3,23 @@ package com.university.repository.admin;
 import com.university.dto.response.admin.UsersAdminResponseDTO;
 import com.university.dto.response.admin.UsersAdminResponseDTO.UserView;
 import com.university.entity.Users;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-@Repository
 public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
 
-    Users findByEmail(String keyword);
+    boolean existsByUserName(String userName);
 
-    boolean existsByUserName(String usersname);
+    boolean existsByEmail(String email);
+
+    Optional<Users> findByEmail(String email);
+
+    Optional<Users> findByUserName(String userName);
 
     @Query("SELECT u.userName FROM Users u")
     List<String> findAllUserNames();
@@ -42,10 +44,7 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
              FROM Users u
              WHERE u.userName = :username
             """)
-    UsersAdminResponseDTO findByUserName(@Param("username") String username);
-
-    @Query("SELECT u.userName FROM Users u")
-    List<String> findAllUserName();
+    UsersAdminResponseDTO findByUserNameDTO(@Param("username") String username);
 
     @Query("""
                 SELECT r.maRole
@@ -75,7 +74,7 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
              )
              FROM Users u
             """)
-    List<UsersAdminResponseDTO> FindAllDTO();
+    List<UsersAdminResponseDTO> findAllDTO();
 
     @Query("""
              SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(
@@ -117,24 +116,26 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
                  u.updateAt
              )
              FROM Users u
-             WHERE LOWER(u.hoTen) LIKE LOWER(CONCAT('%',:keyword,'%'))
+             WHERE LOWER(u.hoTen) LIKE LOWER(CONCAT('%', :keyword, '%'))
             """)
     List<UsersAdminResponseDTO> findUsersByHoTen(@Param("keyword") String keyword);
 
     @Query("""
              SELECT
                  u.id as id,
-                 u.userName as userName ,
+                 u.userName as userName,
+                 u.passWord as passWord,
                  u.email as email,
+                 u.cccd as cccd,
                  u.hoTen as hoTen,
                  u.diaChi as diaChi,
-                 u.trangThai as trangThai
+                 u.gioiTinh as gioiTinh,
+                 u.ngaySinh as ngaySinh,
+                 u.soDienThoai as soDienThoai,
+                 u.trangThai as trangThai,
+                 u.ghiChu as ghiChu
              FROM Users u
              WHERE u.id = :usersId
             """)
     UserView findByView(@Param("usersId") UUID usersId);
-
-    @Query(" DELETE FROM Users")
-    void deleteUsersAll();
-
 }
