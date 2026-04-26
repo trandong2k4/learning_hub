@@ -24,7 +24,7 @@ public class SecurityConfig {
         @Bean
         public JwtAuthenticationFilter jwtAuthenticationFilter() {
                 JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtUtil);
-                filter.setUserDetailsService(userDetailsService); // ← Setter injection
+                filter.setUserDetailsService(userDetailsService);
                 return filter;
         }
 

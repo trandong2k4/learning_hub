@@ -15,7 +15,13 @@ public class DiemDanhAdminResponseDTO {
     private UUID lichId;
 
     public interface DiemDanhView {
-        UUID getId();
-    }
 
+        UUID getId();
+
+        Boolean getTrangThai();
+
+        UUID getHocVienId();
+
+        UUID getLichId();
+    }
 }

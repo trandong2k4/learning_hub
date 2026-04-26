@@ -23,6 +23,14 @@ public class HocVienAdminResponseDTO {
 
     public interface HocVienView {
         UUID getId();
+
+        String getMaHocVien();
+
+        LocalDateTime getNgayNhapHoc();
+
+        LocalDateTime getNgayTotNghiep();
+
+        UUID getNganhId();
     }
 
 }

@@ -8,7 +8,7 @@ import com.university.dto.response.admin.MonHocAdminResponseDTO;
 import com.university.entity.MonHoc;
 import com.university.exception.SimpleMessageException;
 import com.university.mapper.admin.MonHocAdminMapper;
-import com.university.repository.admin.MocHocAdminRepository;
+import com.university.repository.admin.MonHocAdminRepository;
 import com.university.service.admin.excel.MonHocExcelListener;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -25,7 +25,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MonHocAdminService {
     private final MonHocAdminMapper monHocAdminMapper;
-    private final MocHocAdminRepository monHocAdminRepository;
+    private final MonHocAdminRepository monHocAdminRepository;
 
     public ExcelImportResult importFromExcel(MultipartFile file) throws java.io.IOException {
         MonHocExcelListener listener = new MonHocExcelListener(monHocAdminRepository);

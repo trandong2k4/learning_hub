@@ -12,9 +12,16 @@ public class RolePermissionsAdminResponseDTO {
     private UUID id;
     private UUID roleId;
     private UUID permissionsId;
+    private Boolean status;
 
     public interface RolePermissionsView {
         UUID getId();
+
+        String getRoleId();
+
+        String getPermissionsId();
+
+        Boolean getStatus();
     }
 
 }

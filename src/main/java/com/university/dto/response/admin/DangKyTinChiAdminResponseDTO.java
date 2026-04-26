@@ -20,7 +20,13 @@ public class DangKyTinChiAdminResponseDTO {
     private LocalDateTime createdAt;
 
     public interface DangKyTinChiView {
-        UUID getId();
-    }
 
+        UUID getId();
+
+        UUID getLopHocPhanId();
+
+        UUID getHocVienId();
+
+        LocalDateTime getCreatedAt();
+    }
 }

@@ -1,6 +1,8 @@
 package com.university.mapper.admin;
 
 import org.springframework.stereotype.Component;
+
+import com.university.dto.response.admin.RolePermissionsAdminResponseDTO;
 import com.university.entity.Permissions;
 import com.university.entity.Role;
 import com.university.entity.RolePermissions;
@@ -19,5 +21,16 @@ public class RolePermissionsAdminMapper {
     public void updateEntity(RolePermissions rp, Role r, Permissions p) {
         rp.setRole(r);
         rp.setPermissions(p);
+    }
+
+    public RolePermissionsAdminResponseDTO toResponseDTO(RolePermissions entity) {
+        if (entity == null)
+            return null;
+        RolePermissionsAdminResponseDTO dto = new RolePermissionsAdminResponseDTO();
+        dto.setId(entity.getId());
+        dto.setRoleId(entity.getRole().getId());
+        dto.setPermissionsId(entity.getPermissions().getId());
+        dto.setStatus(true);
+        return dto;
     }
 }

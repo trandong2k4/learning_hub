@@ -86,12 +86,17 @@ public class JwtUtil {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .requireIssuer("university-app")
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .requireIssuer("university-app")
+                    .clockSkewSeconds(60)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (ExpiredJwtException e) {
+            return e.getClaims();
+        }
     }
 
     public boolean isAccessToken(String token) {
@@ -121,13 +126,17 @@ public class JwtUtil {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    // Kiểm tra token có phải refresh token không
-    public boolean isRefreshToken(String token) {
+    public boolean isRefreshTokenValid(String token) {
         try {
             Claims claims = extractAllClaims(token);
-            return "refresh".equals(claims.get("tokenType"));
+
+            return "refresh".equals(claims.get("tokenType"))
+                    && !isTokenExpired(token);
+
         } catch (Exception e) {
+            logger.debug("Invalid refresh token: {}", e.getMessage());
             return false;
         }
     }
+
 }

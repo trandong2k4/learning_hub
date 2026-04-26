@@ -64,17 +64,19 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<?> refreshToken(@RequestBody RefreshRequest request) {
-        String username = request.getUsername();
+
         String refreshToken = request.getRefreshToken();
 
-        if (!refreshTokenService.validateRefreshToken(username, refreshToken)) {
+        if (!jwtUtil.isRefreshTokenValid(refreshToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new MessageResponseDTO("Refresh token không hợp lệ hoặc đã hết hạn"));
         }
 
+        String username = jwtUtil.extractUsername(refreshToken);
+
         UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
 
-        Users users = usersAdminRepository.findByUserName(userDetails.getUsername())
+        Users users = usersAdminRepository.findByUserName(username)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy users"));
 
         List<String> permissions = pr.findMaPermissionsByUserId(users.getId());

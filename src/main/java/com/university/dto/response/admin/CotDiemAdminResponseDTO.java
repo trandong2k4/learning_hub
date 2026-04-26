@@ -17,8 +17,16 @@ public class CotDiemAdminResponseDTO {
     private Integer thuTuHienThi;
 
     public interface CotDiemView {
+
         UUID getId();
 
+        String getTenCotDiem();
+
+        String getTiTrong();
+
+        CotDiemEnum getLoai();
+
+        Integer getThuTuHienThi();
     }
 
 }

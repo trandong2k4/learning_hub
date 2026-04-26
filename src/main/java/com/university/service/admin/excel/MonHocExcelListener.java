@@ -12,11 +12,11 @@ import com.alibaba.excel.event.AnalysisEventListener;
 import com.university.dto.request.admin.MonHocAdminRequestDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.entity.MonHoc;
-import com.university.repository.admin.MocHocAdminRepository;
+import com.university.repository.admin.MonHocAdminRepository;
 
 public class MonHocExcelListener extends AnalysisEventListener<MonHocAdminRequestDTO> {
 
-    private final MocHocAdminRepository monHocAdminRepository;
+    private final MonHocAdminRepository monHocAdminRepository;
 
     private final List<MonHoc> toSave = new ArrayList<>();
     private final List<String> errors = new ArrayList<>();
@@ -29,7 +29,7 @@ public class MonHocExcelListener extends AnalysisEventListener<MonHocAdminReques
 
     private int rowIndex = 1;
 
-    public MonHocExcelListener(MocHocAdminRepository monHocAdminRepository) {
+    public MonHocExcelListener(MonHocAdminRepository monHocAdminRepository) {
         this.monHocAdminRepository = monHocAdminRepository;
         this.maMonHocInDb = new HashSet<>(monHocAdminRepository.findAllMaMonHOc());
     }

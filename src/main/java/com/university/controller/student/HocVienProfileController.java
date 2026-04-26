@@ -17,27 +17,27 @@
 // @CrossOrigin
 // public class HocVienProfileController {
 
-//     private final HocVienProfileService service;
+// private final HocVienProfileService service;
 
-//     public HocVienProfileController(HocVienProfileService service) {
-//         this.service = service;
-//     }
-    
-//     // @GetMapping("/test")
-//     // public String test(){
-//     //      return "API OK";
-//     // }
+// public HocVienProfileController(HocVienProfileService service) {
+// this.service = service;
+// }
 
-//     @GetMapping("/{userId}")
-//     public HocVienProfileResponseDTO getProfile(@PathVariable UUID userId) {
-//         return service.getProfile(userId);
-//     }
+// // @GetMapping("/test")
+// // public String test(){
+// // return "API OK";
+// // }
 
-//     @PutMapping("/{userId}")
-//     public HocVienProfileResponseDTO updateProfile(
-//             @PathVariable UUID userId,
-//             @Valid @RequestBody HocVienProfileRequestDTO request) {
+// @GetMapping("/{userId}")
+// public HocVienProfileResponseDTO getProfile(@PathVariable UUID userId) {
+// return service.getProfile(userId);
+// }
 
-//         return service.updateProfile(userId, request);
-//     }
+// @PutMapping("/{userId}")
+// public HocVienProfileResponseDTO updateProfile(
+// @PathVariable UUID userId,
+// @Valid @RequestBody HocVienProfileRequestDTO request) {
+
+// return service.updateProfile(userId, request);
+// }
 // }

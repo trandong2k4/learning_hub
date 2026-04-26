@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface MocHocAdminRepository extends JpaRepository<MonHoc, UUID> {
+public interface MonHocAdminRepository extends JpaRepository<MonHoc, UUID> {
 
     boolean existsByMaMonHoc(String maMonHoc);
 

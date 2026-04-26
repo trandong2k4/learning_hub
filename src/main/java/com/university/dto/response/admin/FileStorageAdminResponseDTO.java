@@ -24,7 +24,23 @@ public class FileStorageAdminResponseDTO {
     private UUID usersID;
 
     public interface FileStorageView {
-        UUID getId();
-    }
 
+        UUID getId();
+
+        String getFileName();
+
+        FileEnum getFileType();
+
+        Float getFileSize();
+
+        String getFileUrl();
+
+        LocalDateTime getCreatedAt();
+
+        UsersInfo getUsers();
+
+        interface UsersInfo {
+            UUID getId();
+        }
+    }
 }

@@ -16,6 +16,10 @@ public class ChuongTrinhDaoTaoAdminResponseDTO {
     public interface ChuongTrinhDaoTaoView {
         UUID getId();
 
+        UUID getNganhId();
+
+        UUID getMonHocId();
+
     }
 
 }

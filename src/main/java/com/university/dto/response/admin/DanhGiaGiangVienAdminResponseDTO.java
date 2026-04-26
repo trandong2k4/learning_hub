@@ -12,11 +12,20 @@ public class DanhGiaGiangVienAdminResponseDTO {
     private UUID id;
     private Float diemDanhGia;
     private String nhanXet;
-    private UUID nhanVien;
-    private UUID lopHocPhan;
+    private UUID nhanVienId;
+    private UUID lopHocPhanId;
 
     public interface DanhGiaGiangVienView {
+
         UUID getId();
+
+        Float getDiemDanhGia();
+
+        String getNhanXet();
+
+        UUID getNhanVienId();
+
+        UUID getLopHocPhanId();
     }
 
 }

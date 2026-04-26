@@ -1,5 +1,6 @@
 package com.university.dto.response.admin;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -14,7 +15,7 @@ import lombok.*;
 public class DiemThanhPhanAdminResponseDTO {
 
     private UUID id;
-    private Float diemSo;
+    private BigDecimal diemSo;
     private Integer lanNhap;
     private String ghiChu;
     @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
@@ -23,7 +24,20 @@ public class DiemThanhPhanAdminResponseDTO {
     private UUID cotDiemId;
 
     public interface DiemThanhPhanView {
+
         UUID getId();
+
+        BigDecimal getDiemSo();
+
+        Integer getLanNhap();
+
+        String getGhiChu();
+
+        LocalDateTime getUpdatedAt();
+
+        UUID getDangKyTinChiId();
+
+        UUID getCotDiemId();
     }
 
 }
