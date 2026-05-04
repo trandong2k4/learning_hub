@@ -22,7 +22,16 @@ public class HocKiAdminResponseDTO {
     private LocalDateTime ngayKetThuc;
 
     public interface HocKiView {
+
         UUID getId();
+
+        String getMaHocKi();
+
+        String getTenHocKi();
+
+        LocalDateTime getNgayBatDau();
+
+        LocalDateTime getNgayKetThuc();
     }
 
 }

@@ -1,5 +1,6 @@
 package com.university.repository.admin;
 
+import com.university.dto.response.admin.HocVienAdminResponseDTO;
 import com.university.entity.HocVien;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,6 +13,8 @@ import java.util.UUID;
 
 @Repository
 public interface HocVienAdminRepository extends JpaRepository<HocVien, UUID> {
+
+    List<HocVienAdminResponseDTO.HocVienView> findAllProjectedBy();
 
     Optional<HocVien> findByMaHocVien(String maHocVien);
 
@@ -28,4 +31,6 @@ public interface HocVienAdminRepository extends JpaRepository<HocVien, UUID> {
 
     @Query("SELECT EXTRACT(YEAR FROM s.ngayNhapHoc), COUNT(s.id) FROM HocVien s WHERE s.ngayNhapHoc IS NOT NULL GROUP BY EXTRACT(YEAR FROM s.ngayNhapHoc)")
     List<Object[]> countByNamNhapHocRaw();
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

@@ -92,8 +92,22 @@ public class RoleAdminService {
     }
 
     @Transactional
-    public void deleteAll() {
-        roleRepository.deleteAll();
+    public void deleteAllByList(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        try {
+            // Kiem tra user dang co trong cac db khac khong
+            // for (UUID uuid : ids) {
+            // if (usersAdminRepository.) {
+
+            // }
+            // }
+            roleRepository.deleteAllByIdIn(ids);
+
+        } catch (Exception e) {
+            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        }
     }
 
 }

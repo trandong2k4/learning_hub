@@ -1,6 +1,5 @@
 package com.university.dto.request.student;
 
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -17,11 +16,10 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DangKyTinChiRequestDTO {
-    @NotNull(message = "không được để trống") 
-    private UUID hocVienId;
-    
-    @NotNull(message = "không được để trống")
+
+    @NotNull(message = "lopHocPhanId khong duoc de trong")
     private UUID lopHocPhanId;
+
     @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
     private LocalDateTime createdAt;
 }

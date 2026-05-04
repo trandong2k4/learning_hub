@@ -15,7 +15,22 @@ public class GiangDayAdminResponseDTO {
     private UUID lopHocPhanId;
 
     public interface GiangDayView {
+
         UUID getId();
+
+        String getVaiTro();
+
+        NhanVienInfo getNhanVien();
+
+        LopHocPhanInfo getLopHocPhan();
+
+        interface NhanVienInfo {
+            UUID getId();
+        }
+
+        interface LopHocPhanInfo {
+            UUID getId();
+        }
     }
 
 }

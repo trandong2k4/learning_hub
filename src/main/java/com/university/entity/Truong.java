@@ -36,6 +36,6 @@ public class Truong {
     @Column(length = 30)
     private String nguoiDaiDien;
 
-    @OneToMany(mappedBy = "truong", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "truong", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Khoa> dKhoas = new ArrayList<>();
 }

@@ -13,6 +13,8 @@ import java.util.UUID;
 @Repository
 public interface GioHocAdminRepository extends JpaRepository<GioHoc, UUID> {
 
+    List<GioHocAdminResponseDTO.GioHocView> findAllProjectedBy();
+
     boolean existsByMaGioHoc(String maGioHoc);
 
     @Query("""
@@ -52,4 +54,6 @@ public interface GioHocAdminRepository extends JpaRepository<GioHoc, UUID> {
              WHERE LOWER(g.tenGioHoc) LIKE LOWER(CONCAT('%', :keyword, '%'))
             """)
     List<GioHocAdminResponseDTO> searchByTenGioHoc(@Param("keyword") String keyword);
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

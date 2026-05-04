@@ -4,6 +4,7 @@ import com.university.dto.request.admin.BaiVietAdminRequestDTO;
 import com.university.dto.response.admin.BaiVietAdminResponseDTO;
 import com.university.entity.BaiViet;
 import com.university.entity.Users;
+import com.university.exception.SimpleMessageException;
 import com.university.mapper.admin.BaiVietAdminMapper;
 import com.university.repository.admin.BaiVietAdminRepository;
 import com.university.repository.admin.UsersAdminRepository;
@@ -39,6 +40,16 @@ public class BaiVietAdminService {
         return baiVietMapper.toResponseDTO(saved);
     }
 
+    public BaiVietAdminResponseDTO getBaiVietById(UUID id) {
+        BaiViet baiViet = baiVietRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại"));
+        return baiVietMapper.toResponseDTO(baiViet);
+    }
+
+    public List<BaiVietAdminResponseDTO.BaiVietView> getALlBaiViet() {
+        return baiVietRepository.findAllBaiVietView();
+    }
+
     @Transactional
     public BaiVietAdminResponseDTO updateBaiViet(UUID id, BaiVietAdminRequestDTO request) {
         BaiViet existing = baiVietRepository.findById(id)
@@ -55,21 +66,30 @@ public class BaiVietAdminService {
         return baiVietMapper.toResponseDTO(updated);
     }
 
-    public BaiVietAdminResponseDTO getBaiVietById(UUID id) {
-        BaiViet baiViet = baiVietRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Bài viết không tồn tại"));
-        return baiVietMapper.toResponseDTO(baiViet);
-    }
-
-    public List<BaiVietAdminResponseDTO.BaiVietView> getALlBaiViet() {
-        return baiVietRepository.findAllBaiVietView();
-    }
-
     @Transactional
     public void deleteBaiViet(UUID id) {
         BaiViet bv = baiVietRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
 
         baiVietRepository.delete(bv);
+    }
+
+    @Transactional
+    public void deleteAllByList(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        try {
+            // Kiem tra user dang co trong cac db khac khong
+            // for (UUID uuid : ids) {
+            // if (usersAdminRepository.) {
+
+            // }
+            // }
+            baiVietRepository.deleteAllByIdIn(ids);
+
+        } catch (Exception e) {
+            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        }
     }
 }

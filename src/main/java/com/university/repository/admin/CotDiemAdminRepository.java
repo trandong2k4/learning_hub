@@ -23,4 +23,6 @@ public interface CotDiemAdminRepository extends JpaRepository<CotDiem, UUID> {
                 FROM CotDiem c
             """)
     List<CotDiemAdminResponseDTO.CotDiemView> findAllView();
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

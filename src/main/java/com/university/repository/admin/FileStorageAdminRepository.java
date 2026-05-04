@@ -5,9 +5,11 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.university.dto.response.admin.FileStorageAdminResponseDTO;
+import com.university.dto.response.admin.FileStorageAdminResponseDTO.FileStorageView;
 import com.university.entity.FileStorage;
 
 public interface FileStorageAdminRepository extends JpaRepository<FileStorage, UUID> {
-    List<FileStorageAdminResponseDTO.FileStorageView> findAllProjectedBy();
+    List<FileStorageView> findAllProjectedBy();
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

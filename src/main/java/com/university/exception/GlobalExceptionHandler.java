@@ -1,6 +1,10 @@
 package com.university.exception;
 
-import org.springframework.http.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -17,18 +21,16 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
-        // 1. EntityNotFound / ResourceNotFound → 404
         @ExceptionHandler({ EntityNotFoundException.class, ResourceNotFoundException.class })
         public ProblemDetail handleNotFound(RuntimeException ex, WebRequest request) {
                 ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
                 pd.setTitle("Resource Not Found");
-                pd.setType(URI.create("https://be-university.com/errors/not-found")); // optional, link docs
-                pd.setProperty("timestamp", Instant.now()); // custom field
+                pd.setType(URI.create("https://be-university.com/errors/not-found"));
+                pd.setProperty("timestamp", Instant.now());
                 pd.setInstance(URI.create(request.getDescription(false)));
                 return pd;
         }
 
-        // 2. Validation errors (400) - dùng ProblemDetail chuẩn
         @SuppressWarnings("null")
         @Override
         protected ResponseEntity<Object> handleMethodArgumentNotValid(
@@ -37,9 +39,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         HttpStatusCode status,
                         WebRequest request) {
 
-                ProblemDetail pd = ProblemDetail.forStatusAndDetail(
-                                HttpStatus.BAD_REQUEST,
-                                "Validation failed");
+                ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
                 pd.setTitle("Validation Error");
 
                 Map<String, String> errors = ex.getBindingResult().getFieldErrors().stream()
@@ -48,13 +48,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                                                 fieldError -> fieldError.getDefaultMessage(),
                                                 (msg1, msg2) -> msg1 + "; " + msg2));
 
-                pd.setProperty("errors", errors); // thêm field tùy ý
+                pd.setProperty("errors", errors);
                 pd.setInstance(URI.create(request.getDescription(false)));
 
                 return createResponseEntity(pd, headers, status, request);
         }
 
-        // 3. Unauthorized / SimpleMessageException (401)
         @ExceptionHandler(SimpleMessageException.class)
         public ProblemDetail handleUnauthorized(SimpleMessageException ex) {
                 ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
@@ -64,7 +63,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 return pd;
         }
 
-        // 4. NoResourceFoundException (404 cho static file)
+        @ExceptionHandler(IllegalArgumentException.class)
+        public ProblemDetail handleBadRequest(IllegalArgumentException ex, WebRequest request) {
+                ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+                pd.setTitle("Bad Request");
+                pd.setType(URI.create("https://university.com/errors/bad-request"));
+                pd.setProperty("timestamp", Instant.now());
+                pd.setInstance(URI.create(request.getDescription(false)));
+                return pd;
+        }
+
+        @ExceptionHandler(IllegalStateException.class)
+        public ProblemDetail handleConflict(IllegalStateException ex, WebRequest request) {
+                ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+                pd.setTitle("Conflict");
+                pd.setType(URI.create("https://university.com/errors/conflict"));
+                pd.setProperty("timestamp", Instant.now());
+                pd.setInstance(URI.create(request.getDescription(false)));
+                return pd;
+        }
+
         @SuppressWarnings("null")
         @Override
         protected ResponseEntity<Object> handleNoHandlerFoundException(
@@ -75,24 +93,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
                 ProblemDetail pd = ProblemDetail.forStatusAndDetail(
                                 HttpStatus.NOT_FOUND,
-                                "Không tìm thấy tài nguyên: " + ex.getRequestURL());
+                                "Khong tim thay tai nguyen: " + ex.getRequestURL());
                 pd.setTitle("Resource Not Found");
                 return createResponseEntity(pd, headers, status, request);
         }
 
-        // 5. Catch-all (500) - chỉ log, không lộ stacktrace
         @ExceptionHandler(Exception.class)
         public ProblemDetail handleAllExceptions(Exception ex, WebRequest request) {
-                // log ở đây nếu cần (logger.error("Unexpected error", ex))
-
                 ProblemDetail pd = ProblemDetail.forStatusAndDetail(
                                 HttpStatus.INTERNAL_SERVER_ERROR,
-                                "Đã xảy ra lỗi hệ thống");
+                                "Da xay ra loi he thong");
                 pd.setTitle("Internal Server Error");
                 pd.setType(URI.create("https://university.com/errors/internal"));
                 pd.setProperty("timestamp", Instant.now());
-                // KHÔNG thêm ex.getMessage() hoặc stacktrace vào response (security)
-
                 return pd;
         }
 }

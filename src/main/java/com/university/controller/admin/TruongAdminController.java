@@ -9,7 +9,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.university.dto.request.admin.TruongAdminRequestDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.TruongAdminResponseDTO;
-import com.university.dto.response.admin.TruongAdminResponseDTO.TruongView;
 import com.university.service.admin.TruongAdminService;
 
 import jakarta.validation.Valid;
@@ -25,26 +24,6 @@ public class TruongAdminController {
 
     private final TruongAdminService truongService;
 
-    @GetMapping
-    public ResponseEntity<List<TruongAdminResponseDTO>> getAll() {
-        return ResponseEntity.ok(truongService.getAll());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<TruongAdminResponseDTO> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(truongService.getById(id));
-    }
-
-    @GetMapping("/search")
-    public ResponseEntity<List<TruongAdminResponseDTO>> getByNamme(@RequestParam("keyword") String keyword) {
-        return ResponseEntity.ok(truongService.getByName(keyword));
-    }
-
-    @GetMapping("/view/{id}")
-    public ResponseEntity<TruongView> getViewById(@PathVariable UUID id) {
-        return ResponseEntity.ok(truongService.getViewById(id));
-    }
-
     @PostMapping
     public ResponseEntity<TruongAdminResponseDTO> create(@Valid @RequestBody TruongAdminRequestDTO dto) {
         return ResponseEntity.ok(truongService.create(dto));
@@ -59,6 +38,16 @@ public class TruongAdminController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping
+    public ResponseEntity<List<TruongAdminResponseDTO>> getAll() {
+        return ResponseEntity.ok(truongService.getAll());
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<TruongAdminResponseDTO>> getByNamme(@RequestParam("keyword") String keyword) {
+        return ResponseEntity.ok(truongService.getByName(keyword));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<TruongAdminResponseDTO> update(@PathVariable UUID id,
             @RequestBody TruongAdminRequestDTO dto) {
@@ -71,15 +60,9 @@ public class TruongAdminController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/batch")
-    public ResponseEntity<Void> deleteList(@RequestParam List<UUID> ids) {
-        truongService.deleteMultiple(ids);
-        return ResponseEntity.noContent().build();
-    }
-
-    @DeleteMapping("/all")
-    public ResponseEntity<Void> deleteAll() {
-        truongService.deleteAll();
+    @DeleteMapping("/delete-list")
+    public ResponseEntity<Void> delete(@RequestBody List<UUID> ids) {
+        truongService.deleteAllByList(ids);
         return ResponseEntity.noContent().build();
     }
 }

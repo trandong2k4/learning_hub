@@ -15,70 +15,72 @@ import java.util.UUID;
 @Repository
 public interface PermissionsAdminRepository extends JpaRepository<Permissions, UUID> {
 
-    // Lấy danh sách maPermissions dựa vào username
-    // Truy vấn đi qua: User -> UserRole -> Role -> RolePermissions -> Permissions
-    @Query("SELECT DISTINCT p.maPermissions FROM Permissions p " +
-            "JOIN p.dRolePermissions rp " +
-            "JOIN rp.role r " +
-            "JOIN r.dUserRole ur " +
-            "JOIN ur.users u " +
-            "WHERE u.userName = :username")
-    List<String> findMaPermissionsByUserName(@Param("username") String username);
+        // Lấy danh sách maPermissions dựa vào username
+        // Truy vấn đi qua: User -> UserRole -> Role -> RolePermissions -> Permissions
+        @Query("SELECT DISTINCT p.maPermissions FROM Permissions p " +
+                        "JOIN p.dRolePermissions rp " +
+                        "JOIN rp.role r " +
+                        "JOIN r.dUserRole ur " +
+                        "JOIN ur.users u " +
+                        "WHERE u.userName = :username")
+        List<String> findMaPermissionsByUserName(@Param("username") String username);
 
-    // Tương tự nhưng lấy theo UserId (UUID)
-    @Query("SELECT DISTINCT p.maPermissions FROM Permissions p " +
-            "JOIN p.dRolePermissions rp " +
-            "JOIN rp.role r " +
-            "JOIN r.dUserRole ur " +
-            "WHERE ur.users.id = :userId")
-    List<String> findMaPermissionsByUserId(@Param("userId") UUID userId);
+        // Tương tự nhưng lấy theo UserId (UUID)
+        @Query("SELECT DISTINCT p.maPermissions FROM Permissions p " +
+                        "JOIN p.dRolePermissions rp " +
+                        "JOIN rp.role r " +
+                        "JOIN r.dUserRole ur " +
+                        "WHERE ur.users.id = :userId")
+        List<String> findMaPermissionsByUserId(@Param("userId") UUID userId);
 
-    @Query("""
-            SELECT new com.university.dto.response.admin.PermissionsAdminResponseDTO(
-                p.id,
-                p.maPermissions,
-                p.moTa
-            )
-            FROM Permissions p
-            """)
-    List<PermissionsAdminResponseDTO> getAllPermissionsDTO();
+        @Query("""
+                        SELECT new com.university.dto.response.admin.PermissionsAdminResponseDTO(
+                            p.id,
+                            p.maPermissions,
+                            p.moTa
+                        )
+                        FROM Permissions p
+                        """)
+        List<PermissionsAdminResponseDTO> getAllPermissionsDTO();
 
-    @Query("""
-            SELECT new com.university.dto.response.admin.PermissionsAdminResponseDTO(
-                p.id,
-                p.maPermissions,
-                p.moTa
-            )
-            FROM Permissions p
-            WHERE p.id = :permissionsId
-            """)
-    Optional<PermissionsAdminResponseDTO> findPermissionsById(@Param("roleId") UUID permissionsId);
+        @Query("""
+                        SELECT new com.university.dto.response.admin.PermissionsAdminResponseDTO(
+                            p.id,
+                            p.maPermissions,
+                            p.moTa
+                        )
+                        FROM Permissions p
+                        WHERE p.id = :permissionsId
+                        """)
+        Optional<PermissionsAdminResponseDTO> findPermissionsById(@Param("roleId") UUID permissionsId);
 
-    @Query("""
-            SELECT new com.university.dto.response.admin.PermissionsAdminResponseDTO(
-                p.id,
-                p.maPermissions,
-                p.moTa
-            )
-            FROM Permissions p
-            WHERE LOWER(p.maPermissions) LIKE LOWER(CONCAT('%',:keyword,'%'))
-            """)
-    List<PermissionsAdminResponseDTO> findPermissionsByMaPermissions(@Param("keyword") String keyword);
+        @Query("""
+                        SELECT new com.university.dto.response.admin.PermissionsAdminResponseDTO(
+                            p.id,
+                            p.maPermissions,
+                            p.moTa
+                        )
+                        FROM Permissions p
+                        WHERE LOWER(p.maPermissions) LIKE LOWER(CONCAT('%',:keyword,'%'))
+                        """)
+        List<PermissionsAdminResponseDTO> findPermissionsByMaPermissions(@Param("keyword") String keyword);
 
-    boolean existsByMaPermissions(String maPermissions);
+        boolean existsByMaPermissions(String maPermissions);
 
-    @Query("SELECT p.maPermissions FROM Permissions p")
-    List<String> findAllMaPermissions();
+        @Query("SELECT p.maPermissions FROM Permissions p")
+        List<String> findAllMaPermissions();
 
-    @Query("""
-            SELECT COUNT(p)
-            FROM Permissions p
-            LEFT JOIN p.dRolePermissions rp
-            WHERE p.id = :permissionsId AND (rp.id IS NOT NULL)
-            """)
-    long checkPermissionsUsed(UUID permissionsId);
+        @Query("""
+                        SELECT COUNT(p)
+                        FROM Permissions p
+                        LEFT JOIN p.dRolePermissions rp
+                        WHERE p.id = :permissionsId AND (rp.id IS NOT NULL)
+                        """)
+        long checkPermissionsUsed(UUID permissionsId);
 
-    @Modifying
-    @Query(" DELETE FROM Permissions p ")
-    void deleteAllPermissions();
+        @Modifying
+        @Query(" DELETE FROM Permissions p ")
+        void deleteAllPermissions();
+
+        void deleteAllByIdIn(List<UUID> ids);
 }

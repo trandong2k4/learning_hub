@@ -38,12 +38,20 @@ public class PasswordResetService {
     }
 
     public void forgotPassword(ForgotPasswordRequestDTO request) {
+        String rateLimitKey = "rate_limit:forgot_password:" + request.getEmail();
+
+        // Kiểm tra xem email này có đang trong thời gian chờ không
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(rateLimitKey))) {
+            throw new SimpleMessageException("Vui lòng đợi vài phút trước khi yêu cầu lại");
+        }
+
         usersAdminRepository.findByEmail(request.getEmail()).ifPresent(user -> {
             if (!user.isTrangThai()) {
                 return;
             }
 
             String token = generateSecureToken();
+            System.out.println("TOKEN: " + token);
             String redisKey = RESET_PASSWORD_PREFIX + token;
 
             redisTemplate.opsForValue().set(
@@ -52,6 +60,8 @@ public class PasswordResetService {
                     RESET_PASSWORD_TTL);
 
             sendGridMailService.sendResetPasswordEmail(user.getEmail(), token);
+            // Đặt key chặn spam trong vòng 2 phút
+            redisTemplate.opsForValue().set(rateLimitKey, "true", Duration.ofMinutes(2));
         });
     }
 

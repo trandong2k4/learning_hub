@@ -138,4 +138,6 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
              WHERE u.id = :usersId
             """)
     UserView findByView(@Param("usersId") UUID usersId);
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

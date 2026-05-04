@@ -57,6 +57,5 @@ public interface MonHocAdminRepository extends JpaRepository<MonHoc, UUID> {
              """)
     List<MonHocAdminResponseDTO> findMonHocByTen(@Param("keyword") String keyword);
 
-    @Query(" DELETE FROM MonHoc")
-    void deleteAll();
+    void deleteAllByIdIn(List<UUID> ids);
 }

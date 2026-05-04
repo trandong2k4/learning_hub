@@ -1,5 +1,6 @@
 package com.university.dto.request.admin;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -16,7 +17,7 @@ import lombok.*;
 public class DiemThanhPhanAdminRequestDTO {
 
     @Size(max = 10, min = 0, message = "Điểm không được nhỏ hơn 0 và lớn hơn 10")
-    private Float diemSo;
+    private BigDecimal diemSo;
     private Integer lanNhap;
     private String ghiChu;
     @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")

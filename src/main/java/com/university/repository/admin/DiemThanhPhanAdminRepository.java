@@ -23,4 +23,6 @@ public interface DiemThanhPhanAdminRepository extends JpaRepository<DiemThanhPha
                 FROM DiemThanhPhan d
             """)
     List<DiemThanhPhanAdminResponseDTO.DiemThanhPhanView> findAllView();
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

@@ -3,6 +3,7 @@ package com.university.controller.admin;
 import com.university.dto.request.admin.GioHocAdminRequestDTO;
 import com.university.dto.response.admin.GioHocAdminResponseDTO;
 import com.university.service.admin.GioHocAdminService;
+
 import jakarta.validation.Valid;
 import jakarta.websocket.server.PathParam;
 import lombok.RequiredArgsConstructor;
@@ -17,43 +18,43 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class GioHocAdminController {
 
-    private final GioHocAdminService gioHocService;
+    private final GioHocAdminService gioHocAdminService;
 
     @GetMapping
     public ResponseEntity<List<GioHocAdminResponseDTO>> getAll() {
-        return ResponseEntity.ok(gioHocService.getAll());
+        return ResponseEntity.ok(gioHocAdminService.getAll());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<GioHocAdminResponseDTO> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(gioHocService.getById(id));
+        return ResponseEntity.ok(gioHocAdminService.getById(id));
     }
 
     @GetMapping("/search-name")
     public ResponseEntity<List<GioHocAdminResponseDTO>> getById(@PathParam("keyword") String keyword) {
-        return ResponseEntity.ok(gioHocService.getByTenGioHoc(keyword));
+        return ResponseEntity.ok(gioHocAdminService.getByTenGioHoc(keyword));
     }
 
     @PostMapping
     public ResponseEntity<GioHocAdminResponseDTO> create(@Valid @RequestBody GioHocAdminRequestDTO dto) {
-        return ResponseEntity.ok(gioHocService.create(dto));
+        return ResponseEntity.ok(gioHocAdminService.create(dto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<GioHocAdminResponseDTO> update(@PathVariable UUID id,
             @Valid @RequestBody GioHocAdminRequestDTO dto) {
-        return ResponseEntity.ok(gioHocService.update(id, dto));
+        return ResponseEntity.ok(gioHocAdminService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        gioHocService.delete(id);
+        gioHocAdminService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/batch")
+    @DeleteMapping("/delete-list")
     public ResponseEntity<Void> deleteList(@RequestParam List<UUID> ids) {
-        gioHocService.deleteMultiple(ids);
+        gioHocAdminService.deleteAllByList(ids);
         return ResponseEntity.noContent().build();
     }
 }

@@ -10,16 +10,28 @@ import lombok.*;
 public class ChuongTrinhDaoTaoAdminResponseDTO {
 
     private UUID id;
-    private UUID nganhId;
     private UUID monHocId;
+    private String maMonHoc;
+    private String tenMonHoc;
+    private Integer soTinChi;
+    private String moTa;
+    private String maNganh;
 
     public interface ChuongTrinhDaoTaoView {
+
         UUID getId();
 
-        UUID getNganhId();
+        NganhInfo getNganh();
 
-        UUID getMonHocId();
+        MonHocInfo getMonHoc();
 
+        interface NganhInfo {
+            UUID getId();
+        }
+
+        interface MonHocInfo {
+            UUID getId();
+        }
     }
 
 }

@@ -4,7 +4,6 @@ import com.alibaba.excel.EasyExcel;
 import com.university.dto.request.admin.TruongAdminRequestDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.TruongAdminResponseDTO;
-import com.university.dto.response.admin.TruongAdminResponseDTO.TruongView;
 import com.university.entity.Truong;
 import com.university.exception.SimpleMessageException;
 import com.university.mapper.admin.TruongAdminMapper;
@@ -26,11 +25,11 @@ import java.util.UUID;
 public class TruongAdminService {
 
     @Autowired
-    private final TruongAdminRepository truongRepository;
+    private final TruongAdminRepository truongAdminRepository;
     private final TruongAdminMapper truongMapper;
 
     public ExcelImportResult importFromExcel(MultipartFile file) throws java.io.IOException {
-        TruongExcelListener listener = new TruongExcelListener(truongRepository);
+        TruongExcelListener listener = new TruongExcelListener(truongAdminRepository);
 
         EasyExcel.read(file.getInputStream(), TruongAdminRequestDTO.class, listener)
                 .sheet("Truong")
@@ -41,55 +40,53 @@ public class TruongAdminService {
     }
 
     public TruongAdminResponseDTO create(TruongAdminRequestDTO dto) {
-        if (truongRepository.existsByMaTruong(dto.getMaTruong())) {
+        if (truongAdminRepository.existsByMaTruong(dto.getMaTruong())) {
             throw new SimpleMessageException("Mã trường đã tồn tại");
         }
-        return truongMapper.toResponseDTO(truongRepository.save(truongMapper.toEntity(dto)));
+        return truongMapper.toResponseDTO(truongAdminRepository.save(truongMapper.toEntity(dto)));
     }
 
     public List<TruongAdminResponseDTO> getAll() {
-        return truongRepository.FindAllDTO();
-    }
-
-    public TruongAdminResponseDTO getById(UUID id) {
-        TruongAdminResponseDTO truong = truongRepository.findTruongById(id);
-        return truong;
+        return truongAdminRepository.FindAllDTO();
     }
 
     public List<TruongAdminResponseDTO> getByName(String keyword) {
-        List<TruongAdminResponseDTO> truong = truongRepository.findTruongByTen(keyword);
-        return truong;
-    }
-
-    public TruongView getViewById(UUID id) {
-        TruongView truong = truongRepository.findTruongView(id);
+        List<TruongAdminResponseDTO> truong = truongAdminRepository.findTruongByTen(keyword);
         return truong;
     }
 
     public TruongAdminResponseDTO update(UUID id, TruongAdminRequestDTO dto) {
-        Truong truong = truongRepository.findById(id)
+        Truong truong = truongAdminRepository.findById(id)
                 .orElseThrow(() -> new SimpleMessageException("Trường không tồn tại"));
         truongMapper.updateEntity(truong, dto);
-        truongRepository.save(truong);
+        truongAdminRepository.save(truong);
         return truongMapper.toResponseDTO(truong);
     }
 
     public void delete(UUID id) {
-        if (!truongRepository.existsById(id)) {
+        if (!truongAdminRepository.existsById(id)) {
             throw new SimpleMessageException("Trường không tồn tại");
         }
-        truongRepository.deleteById(id);
+        truongAdminRepository.deleteById(id);
     }
 
     @Transactional
-    public void deleteMultiple(List<UUID> ids) {
-        // 2. Xóa hàng loạt
-        truongRepository.deleteAllByIdInBatch(ids);
-    }
+    public void deleteAllByList(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        try {
+            // Kiem tra user dang co trong cac db khac khong
+            // for (UUID uuid : ids) {
+            // if (usersAdminRepository.) {
 
-    @Transactional
-    public void deleteAll() {
-        truongRepository.deleteAll();
+            // }
+            // }
+            truongAdminRepository.deleteAllByIdIn(ids);
+
+        } catch (Exception e) {
+            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        }
     }
 
 }

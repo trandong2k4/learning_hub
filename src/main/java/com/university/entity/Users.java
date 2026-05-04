@@ -80,10 +80,10 @@ public class Users implements UserDetails {
   @OneToMany(mappedBy = "users", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<UserRole> dUserRoles = new ArrayList<>();
 
-  @OneToOne(mappedBy = "users", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToOne(mappedBy = "users", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
   private NhanVien nhanVien;
 
-  @OneToOne(mappedBy = "users", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToOne(mappedBy = "users", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
   private HocVien hocVien;
 
   @Override

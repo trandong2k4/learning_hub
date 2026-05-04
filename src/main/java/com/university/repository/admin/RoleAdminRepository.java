@@ -65,4 +65,5 @@ public interface RoleAdminRepository extends JpaRepository<Role, UUID> {
     @Query(" DELETE FROM Role")
     void deleteAll();
 
+    void deleteAllByIdIn(List<UUID> ids);
 }

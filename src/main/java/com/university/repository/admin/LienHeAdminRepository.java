@@ -5,9 +5,10 @@ import com.university.entity.LienHe;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface LienHeAdminRepository extends JpaRepository<LienHe, UUID> {
-
+    void deleteAllByIdIn(List<UUID> ids);
 }

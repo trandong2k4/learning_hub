@@ -17,24 +17,24 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class GioHocAdminService {
 
-    private final GioHocAdminRepository gioHocRepository;
+    private final GioHocAdminRepository gioHocAdminRepository;
     private final GioHocAdminMapper gioHocMapper;
 
     public List<GioHocAdminResponseDTO> getAll() {
-        return gioHocRepository.findAllDTO();
+        return gioHocAdminRepository.findAllDTO();
     }
 
     public GioHocAdminResponseDTO getById(UUID id) {
-        return gioHocRepository.findDTOById(id);
+        return gioHocAdminRepository.findDTOById(id);
     }
 
     public List<GioHocAdminResponseDTO> getByTenGioHoc(String key) {
-        return gioHocRepository.searchByTenGioHoc(key);
+        return gioHocAdminRepository.searchByTenGioHoc(key);
     }
 
     @Transactional
     public GioHocAdminResponseDTO create(GioHocAdminRequestDTO dto) {
-        if (gioHocRepository.existsByMaGioHoc(dto.getMaGioHoc())) {
+        if (gioHocAdminRepository.existsByMaGioHoc(dto.getMaGioHoc())) {
             throw new SimpleMessageException("Mã giờ học đã tồn tại");
         }
         // Kiểm tra logic thời gian (Bắt đầu < Kết thúc)
@@ -43,12 +43,12 @@ public class GioHocAdminService {
         }
 
         GioHoc gioHoc = gioHocMapper.toEntity(dto);
-        return gioHocMapper.toResponseDTO(gioHocRepository.save(gioHoc));
+        return gioHocMapper.toResponseDTO(gioHocAdminRepository.save(gioHoc));
     }
 
     @Transactional
     public GioHocAdminResponseDTO update(UUID id, GioHocAdminRequestDTO dto) {
-        GioHoc gioHoc = gioHocRepository.findById(id)
+        GioHoc gioHoc = gioHocAdminRepository.findById(id)
                 .orElseThrow(() -> new SimpleMessageException("Giờ học không tồn tại"));
 
         if (dto.getThoiGianBatDau().isAfter(dto.getThoiGianKetThuc())) {
@@ -56,20 +56,34 @@ public class GioHocAdminService {
         }
 
         gioHocMapper.updateEntity(gioHoc, dto);
-        return gioHocMapper.toResponseDTO(gioHocRepository.save(gioHoc));
+        return gioHocMapper.toResponseDTO(gioHocAdminRepository.save(gioHoc));
     }
 
     @Transactional
     public void delete(UUID id) {
-        if (!gioHocRepository.existsById(id)) {
+        if (!gioHocAdminRepository.existsById(id)) {
             throw new SimpleMessageException("Giờ học không tồn tại");
         }
         // Lưu ý: Cần kiểm tra ràng buộc với Lịch học trước khi xóa thực tế
-        gioHocRepository.deleteById(id);
+        gioHocAdminRepository.deleteById(id);
     }
 
     @Transactional
-    public void deleteMultiple(List<UUID> ids) {
-        gioHocRepository.deleteAllByIdInBatch(ids);
+    public void deleteAllByList(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        try {
+            // Kiem tra user dang co trong cac db khac khong
+            // for (UUID uuid : ids) {
+            // if (usersAdminRepository.) {
+
+            // }
+            // }
+            gioHocAdminRepository.deleteAllByIdIn(ids);
+
+        } catch (Exception e) {
+            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        }
     }
 }

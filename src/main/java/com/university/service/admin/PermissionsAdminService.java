@@ -25,11 +25,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PermissionsAdminService {
 
-    private final PermissionsAdminRepository pr;
-    private final PermissionsAdminMapper pm;
+    private final PermissionsAdminRepository permissionsAdminRepository;
+    private final PermissionsAdminMapper permissionsAdminMapper;
 
     public ExcelImportResult importFromExcel(MultipartFile file) throws java.io.IOException {
-        PermissionsExcelListener listener = new PermissionsExcelListener(pr);
+        PermissionsExcelListener listener = new PermissionsExcelListener(permissionsAdminRepository);
 
         EasyExcel.read(file.getInputStream(), PermissionsAdminRequestDTO.class,
                 listener)
@@ -49,12 +49,12 @@ public class PermissionsAdminService {
             throw new SimpleMessageException("Tên quyền không được để trống");
         }
 
-        if (pr.existsByMaPermissions(dto.getMaPermissions()))
+        if (permissionsAdminRepository.existsByMaPermissions(dto.getMaPermissions()))
             throw new SimpleMessageException("Mã quyền '" + dto.getMaPermissions() + "' đã tồn tại!");
 
         try {
-            Permissions permissions = pm.toEntity(dto);
-            return pm.toResponseDTO(pr.save(permissions));
+            Permissions permissions = permissionsAdminMapper.toEntity(dto);
+            return permissionsAdminMapper.toResponseDTO(permissionsAdminRepository.save(permissions));
 
         } catch (Exception e) {
             throw new SimpleMessageException("Thêm quyền không thành công!");
@@ -62,17 +62,17 @@ public class PermissionsAdminService {
     }
 
     public List<PermissionsAdminResponseDTO> getAll() {
-        return pr.getAllPermissionsDTO();
+        return permissionsAdminRepository.getAllPermissionsDTO();
     }
 
     public Permissions getPermissionsById(UUID id) {
-        Permissions permissions = pr.findById(id)
+        Permissions permissions = permissionsAdminRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy quyền"));
         return permissions;
     }
 
     public List<PermissionsAdminResponseDTO> getByMaPermissions(String keyword) {
-        return pr.findPermissionsByMaPermissions(keyword);
+        return permissionsAdminRepository.findPermissionsByMaPermissions(keyword);
     }
 
     public PermissionsAdminResponseDTO update(UUID id, PermissionsAdminRequestDTO dto) {
@@ -82,8 +82,8 @@ public class PermissionsAdminService {
         } else if (StringUtils.isBlank(dto.getMoTa())) {
             throw new SimpleMessageException("Tên quyền không được để trống");
         }
-        pm.upDateEntity(permissions, dto);
-        return pm.toResponseDTO(permissions);
+        permissionsAdminMapper.upDateEntity(permissions, dto);
+        return permissionsAdminMapper.toResponseDTO(permissions);
     }
 
     private final RolePermissionsAdminRepository r;
@@ -93,18 +93,25 @@ public class PermissionsAdminService {
             throw new SimpleMessageException(
                     "Permissions đang gán cho Role trong bảng RolePermissions, không thể xóa");
         }
-        pr.deleteById(permissionsId);
-    }
-
-    public void deleteAllByList(List<UUID> ids) {
-        for (UUID id : ids) {
-            delete(id);
-        }
+        permissionsAdminRepository.deleteById(permissionsId);
     }
 
     @Transactional
-    public void deleteAllPermissons() {
-        pr.deleteAllPermissions();
-    }
+    public void deleteAllByList(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        try {
+            // Kiem tra user dang co trong cac db khac khong
+            // for (UUID uuid : ids) {
+            // if (usersAdminRepository.) {
 
+            // }
+            // }
+            permissionsAdminRepository.deleteAllByIdIn(ids);
+
+        } catch (Exception e) {
+            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        }
+    }
 }

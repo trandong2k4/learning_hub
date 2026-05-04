@@ -17,26 +17,11 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/admin/monhoc")
+@RequestMapping("/api/admin/mon-hoc")
 @RequiredArgsConstructor
 public class MonHocAdminController {
 
     private final MonHocAdminService monHocAdminService;
-
-    @GetMapping
-    public ResponseEntity<List<MonHocAdminResponseDTO>> getAll() {
-        return ResponseEntity.ok(monHocAdminService.getAllMonHoc());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<MonHocAdminResponseDTO> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(monHocAdminService.getMonHocById(id));
-    }
-
-    @GetMapping("/search")
-    public ResponseEntity<List<MonHocAdminResponseDTO>> getByNamme(@RequestParam("keyword") String keyword) {
-        return ResponseEntity.ok(monHocAdminService.getMonHocByName(keyword));
-    }
 
     @PostMapping
     public ResponseEntity<MonHocAdminResponseDTO> create(@RequestBody MonHocAdminRequestDTO dto) {
@@ -53,21 +38,30 @@ public class MonHocAdminController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<List<MonHocAdminResponseDTO>> getAll() {
+        return ResponseEntity.ok(monHocAdminService.getALLMonHOCDTO());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<MonHocAdminResponseDTO> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(monHocAdminService.getMonHocById(id));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<MonHocAdminResponseDTO>> getByNamme(@RequestParam("keyword") String keyword) {
+        return ResponseEntity.ok(monHocAdminService.getMonHocByName(keyword));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<MonHocAdminResponseDTO> update(@PathVariable UUID id,
             @RequestBody MonHocAdminRequestDTO dto) {
-        return ResponseEntity.ok(monHocAdminService.update(id, dto));
+        return ResponseEntity.ok(monHocAdminService.updateMonHoc(id, dto));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        monHocAdminService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @DeleteMapping("/all")
-    public ResponseEntity<Void> deleteAll() {
-        monHocAdminService.deleteAll();
+    @DeleteMapping("/delete-list")
+    public ResponseEntity<Void> delete(@RequestBody List<UUID> ids) {
+        monHocAdminService.deleteAllByList(ids);
         return ResponseEntity.noContent().build();
     }
 }

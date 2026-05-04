@@ -20,13 +20,16 @@ public class UsersExcelListener extends
     private final List<String> errors = new ArrayList<>();
 
     private final Set<String> maUsersInFile = new HashSet<>(); // Kiểm tra trùng trong file
+    private final Set<String> maUsernameInDb;
 
     private static final int BATCH_COUNT = 50; // Tăng để hiệu suất tốt
 
     private int rowIndex = 1;
+    private int successCount = 0;
 
     public UsersExcelListener(UsersAdminRepository usersRepository) {
         this.usersRepository = usersRepository;
+        this.maUsernameInDb = new HashSet<>(usersRepository.findAllUserNames());
     }
 
     @Override
@@ -56,8 +59,7 @@ public class UsersExcelListener extends
         }
         maUsersInFile.add(maUsers);
 
-        // Kiểm tra tồn tại trong Database (cách này an toàn và rõ ràng)
-        if (usersRepository.existsByUserName(maUsers)) {
+        if (maUsernameInDb.contains(maUsers)) {
             errors.add("Dòng " + rowIndex + ": Mã Users '" + maUsers + "' đã tồn tại trong cơ sở dữ liệu");
             return;
         }
@@ -77,6 +79,13 @@ public class UsersExcelListener extends
         if (!toSave.isEmpty()) {
             try {
                 usersRepository.saveAll(toSave);
+
+                // ✔ chỉ tăng khi save OK
+                successCount += toSave.size();
+
+                // ✔ update DB cache (tránh duplicate batch sau)
+                toSave.forEach(n -> maUsernameInDb.add(n.getUsername()));
+
             } catch (Exception e) {
                 errors.add("Lỗi khi lưu batch: " + e.getMessage());
             } finally {
@@ -94,7 +103,7 @@ public class UsersExcelListener extends
     public ExcelImportResult getResult() {
         ExcelImportResult result = new ExcelImportResult();
         result.setTotalRows(rowIndex - 1); // Trừ đi header
-        result.setSuccessCount(toSave.isEmpty() ? (rowIndex - 1 - errors.size()) : 0); // Nếu còn dữ liệu chưa lưu, coi
+        result.setSuccessCount(successCount);
         // như chưa thành công
         result.setErrorCount(errors.size());
         result.setErrors(new ArrayList<>(errors));

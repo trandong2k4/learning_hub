@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.university.service.admin.SendGridService;
 
 @RestController
-@RequestMapping("/api/admin/test")
+@RequestMapping("/api/admin/test-mail")
 public class TestMailController {
 
         @Autowired

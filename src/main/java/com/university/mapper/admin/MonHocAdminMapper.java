@@ -21,15 +21,17 @@ public class MonHocAdminMapper {
         return monHoc;
     }
 
-    public void updateEntity(MonHoc monHoc, MonHocAdminRequestDTO dto) {
+    public MonHoc updateEntity(MonHoc monHoc, MonHocAdminRequestDTO dto) {
         monHoc.setMaMonHoc(dto.getMaMonHoc());
         monHoc.setTenMonHoc(dto.getTenMonHoc());
         monHoc.setSoTinChi(dto.getSoTinChi());
         monHoc.setMoTa(dto.getMoTa());
+        return monHoc;
     }
 
     public MonHocAdminResponseDTO toResponseDTO(MonHoc monHoc) {
         MonHocAdminResponseDTO dto = new MonHocAdminResponseDTO();
+        dto.setId(monHoc.getId());
         dto.setMaMonHoc(monHoc.getMaMonHoc());
         dto.setTenMonHoc(monHoc.getTenMonHoc());
         dto.setSoTinChi(monHoc.getSoTinChi());

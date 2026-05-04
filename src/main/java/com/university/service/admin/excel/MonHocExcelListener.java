@@ -21,13 +21,14 @@ public class MonHocExcelListener extends AnalysisEventListener<MonHocAdminReques
     private final List<MonHoc> toSave = new ArrayList<>();
     private final List<String> errors = new ArrayList<>();
 
-    private final Set<String> maTruongInFile = new HashSet<>(); // Kiểm tra trùng trong file
+    private final Set<String> maMonHocInFile = new HashSet<>();
 
     private final Set<String> maMonHocInDb;
 
     private static final int BATCH_COUNT = 100; // Tăng để hiệu suất tốt
 
     private int rowIndex = 1;
+    private int successCount = 0;
 
     public MonHocExcelListener(MonHocAdminRepository monHocAdminRepository) {
         this.monHocAdminRepository = monHocAdminRepository;
@@ -54,25 +55,25 @@ public class MonHocExcelListener extends AnalysisEventListener<MonHocAdminReques
 
         // === KIỂM TRA HỢP LỆ ===
         if (maMonHoc.length() > 10) {
-            errors.add("Dòng " + rowIndex + ": Mã trường tối đa 10 ký tự");
+            errors.add("Dòng " + rowIndex + ": Mã môn học tối đa 10 ký tự");
             return;
         }
 
         if (data.getTenMonHoc() == null || data.getTenMonHoc().trim().isEmpty()) {
-            errors.add("Dòng " + rowIndex + ": Tên trường không được để trống");
+            errors.add("Dòng " + rowIndex + ": Tên môn học không được để trống");
             return;
         }
 
         // Kiểm tra trùng trong cùng file Excel
-        if (maTruongInFile.contains(maMonHoc)) {
-            errors.add("Dòng " + rowIndex + ": Mã trường '" + maMonHoc + "' bị trùng lặp trong file Excel");
+        if (maMonHocInFile.contains(maMonHoc)) {
+            errors.add("Dòng " + rowIndex + ": Mã môn học '" + maMonHoc + "' bị trùng lặp trong file Excel");
             return;
         }
-        maTruongInFile.add(maMonHoc);
+        maMonHocInFile.add(maMonHoc);
 
         // Kiểm tra tồn tại trong Database (cách này an toàn và rõ ràng)
         if (maMonHocInDb.contains(maMonHoc)) {
-            errors.add("Dòng " + rowIndex + ": Mã trường '" + maMonHoc + "' đã tồn tại trong cơ sở dữ liệu");
+            errors.add("Dòng " + rowIndex + ": Mã môn học '" + maMonHoc + "' đã tồn tại trong cơ sở dữ liệu");
             return;
         }
 
@@ -91,6 +92,13 @@ public class MonHocExcelListener extends AnalysisEventListener<MonHocAdminReques
         if (!toSave.isEmpty()) {
             try {
                 monHocAdminRepository.saveAll(toSave);
+
+                // ✔ chỉ tăng khi save OK
+                successCount += toSave.size();
+
+                // ✔ update DB cache (tránh duplicate batch sau)
+                toSave.forEach(n -> maMonHocInDb.add(n.getMaMonHoc()));
+
             } catch (Exception e) {
                 errors.add("Lỗi khi lưu batch: " + e.getMessage());
             } finally {
@@ -111,7 +119,7 @@ public class MonHocExcelListener extends AnalysisEventListener<MonHocAdminReques
     public ExcelImportResult getResult() {
         ExcelImportResult result = new ExcelImportResult();
         result.setTotalRows(rowIndex - 1); // Trừ đi header
-        result.setSuccessCount(toSave.isEmpty() ? (rowIndex - 1 - errors.size()) : 0); // Nếu còn dữ liệu chưa lưu, coi
+        result.setSuccessCount(successCount);
         // như chưa thành công
         result.setErrorCount(errors.size());
         result.setErrors(new ArrayList<>(errors));

@@ -26,7 +26,30 @@ public class HocPhiAdminResponseDTO {
     private UUID hocKiId;
 
     public interface HocPhiView {
+
         UUID getId();
+
+        Double getSoTien();
+
+        HocPhiEnum getTrangThai();
+
+        Integer getSoTinChi();
+
+        LocalDateTime getCreatedAt();
+
+        LocalDateTime getUpdatedAt();
+
+        HocVienInfo getHocVien();
+
+        HocKiInfo getHocKi();
+
+        interface HocVienInfo {
+            UUID getId();
+        }
+
+        interface HocKiInfo {
+            UUID getId();
+        }
     }
 
 }

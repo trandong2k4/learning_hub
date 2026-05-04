@@ -14,6 +14,7 @@ public class NganhAdminResponseDTO {
     private String danhGia;
     private String moTa;
     private UUID khoaId;
+    private String tenKhoa;
 
     public interface NganhView {
         UUID getId();

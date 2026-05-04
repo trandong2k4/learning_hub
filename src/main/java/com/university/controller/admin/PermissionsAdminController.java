@@ -65,10 +65,4 @@ public class PermissionsAdminController {
         permissionsAdminService.delete(id);
         return ResponseEntity.noContent().build();
     }
-
-    @DeleteMapping("/all")
-    public ResponseEntity<Void> deleteAll() {
-        permissionsAdminService.deleteAllPermissons();
-        return ResponseEntity.noContent().build();
-    }
 }

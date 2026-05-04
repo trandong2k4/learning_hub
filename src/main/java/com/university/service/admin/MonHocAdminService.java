@@ -38,19 +38,6 @@ public class MonHocAdminService {
         return listener.getResult();
     }
 
-    public List<MonHocAdminResponseDTO> getAllMonHoc() {
-        List<MonHoc> list = monHocAdminRepository.findAll();
-        return list.stream().map(monHoc -> {
-            MonHocAdminResponseDTO dto = new MonHocAdminResponseDTO();
-            dto.setId(monHoc.getId());
-            dto.setMaMonHoc(monHoc.getMaMonHoc());
-            dto.setTenMonHoc(monHoc.getTenMonHoc());
-            dto.setSoTinChi(monHoc.getSoTinChi());
-            dto.setMoTa(monHoc.getMoTa());
-            return dto;
-        }).toList();
-    }
-
     public MonHocAdminResponseDTO create(MonHocAdminRequestDTO dto) {
         try {
             if (StringUtils.isBlank(dto.getMaMonHoc())) {
@@ -70,14 +57,6 @@ public class MonHocAdminService {
         }
     }
 
-    @Transactional
-    public void updateMonHoc(UUID id, MonHocAdminRequestDTO request) {
-        MonHoc monHoc = monHocAdminRepository.findById(id)
-                .orElseThrow(() -> new SimpleMessageException("Môn học không tồn tại"));
-        monHocAdminMapper.updateEntity(monHoc, request);
-        monHocAdminRepository.save(monHoc);
-    }
-
     public List<MonHocAdminResponseDTO> getALLMonHOCDTO() {
         return monHocAdminRepository.FindAllDTO();
     }
@@ -94,29 +73,35 @@ public class MonHocAdminService {
         return monHocAdminRepository.findMonHocByTen(keyword);
     }
 
-    public MonHocAdminResponseDTO update(UUID id, MonHocAdminRequestDTO dto) {
+    public MonHocAdminResponseDTO updateMonHoc(UUID id, MonHocAdminRequestDTO request) {
         MonHoc monHoc = monHocAdminRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khoa"));
-
-        monHoc.setMaMonHoc(dto.getMaMonHoc());
-        monHoc.setTenMonHoc(dto.getTenMonHoc());
-
-        return monHocAdminMapper.toResponseDTO(monHocAdminRepository.save(monHoc));
+                .orElseThrow(() -> new SimpleMessageException("Môn học không tồn tại"));
+        monHoc = monHocAdminMapper.updateEntity(monHoc, request);
+        monHocAdminRepository.save(monHoc);
+        return monHocAdminMapper.toResponseDTO(monHoc);
     }
 
     public void delete(UUID monhocId) {
         monHocAdminRepository.deleteById(monhocId);
     }
 
-    public void deleteAllByList(List<UUID> ids) {
-        for (UUID id : ids) {
-            delete(id);
-        }
-    }
-
     @Transactional
-    public void deleteAll() {
-        monHocAdminRepository.deleteAll();
+    public void deleteAllByList(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        try {
+            // Kiem tra user dang co trong cac db khac khong
+            // for (UUID uuid : ids) {
+            // if (usersAdminRepository.) {
+
+            // }
+            // }
+            monHocAdminRepository.deleteAllByIdIn(ids);
+
+        } catch (Exception e) {
+            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        }
     }
 
 }

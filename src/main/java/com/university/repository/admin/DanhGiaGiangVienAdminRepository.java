@@ -21,4 +21,6 @@ public interface DanhGiaGiangVienAdminRepository extends JpaRepository<DanhGiaGi
                 FROM DanhGiaGiangVien d
             """)
     List<DanhGiaGiangVienAdminResponseDTO.DanhGiaGiangVienView> findAllView();
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

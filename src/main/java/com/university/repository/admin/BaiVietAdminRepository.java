@@ -12,6 +12,8 @@ import java.util.UUID;
 
 @Repository
 public interface BaiVietAdminRepository extends JpaRepository<BaiViet, UUID> {
+    List<BaiVietAdminResponseDTO.BaiVietView> findAllProjectedBy();
+
     @Query("SELECT b FROM BaiViet b WHERE LOWER(b.tieuDe) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     List<BaiViet> searchByTieuDe(@Param("keyword") String keyword);
 
@@ -31,4 +33,6 @@ public interface BaiVietAdminRepository extends JpaRepository<BaiViet, UUID> {
                 FROM BaiViet bv
             """)
     List<BaiVietAdminResponseDTO.BaiVietView> findAllBaiVietView();
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

@@ -57,10 +57,4 @@ public class RoleAdminController {
         roleAdminService.delete(id);
         return ResponseEntity.noContent().build();
     }
-
-    @DeleteMapping("/all")
-    public ResponseEntity<Void> deleteAll() {
-        roleAdminService.deleteAll();
-        return ResponseEntity.noContent().build();
-    }
 }

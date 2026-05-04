@@ -1,14 +1,14 @@
 package com.university.dto.request.student;
 
-import java.util.UUID;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Setter
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class ChuongTrinhDaoTaoRequestDTO {
-    private UUID nganhId;
     private String keyword;
-
 }

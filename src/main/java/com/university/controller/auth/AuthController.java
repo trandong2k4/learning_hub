@@ -87,8 +87,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<MessageResponseDTO> logout(
-            @RequestBody LogoutRequestDTO request,
+    public ResponseEntity<MessageResponseDTO> logout(@RequestBody LogoutRequestDTO request,
             Authentication authentication) {
 
         String username = authentication.getName();
@@ -105,16 +104,15 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<MessageResponseDTO> forgotPassword(
-            @Valid @RequestBody ForgotPasswordRequestDTO request) {
+    public ResponseEntity<MessageResponseDTO> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
         passwordResetService.forgotPassword(request);
         return ResponseEntity.ok(
-                new MessageResponseDTO("Nếu email tồn tại trong hệ thống, hướng dẫn khôi phục mật khẩu đã được gửi"));
+                new MessageResponseDTO(
+                        "Nếu email tồn tại trong hệ thống, hướng dẫn khôi phục mật khẩu đã được gửi đến email của bạn"));
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<MessageResponseDTO> resetPassword(
-            @Valid @RequestBody ResetPasswordRequestDTO request) {
+    public ResponseEntity<MessageResponseDTO> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
         passwordResetService.resetPassword(request);
         return ResponseEntity.ok(new MessageResponseDTO("Đặt lại mật khẩu thành công"));
     }

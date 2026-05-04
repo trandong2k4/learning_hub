@@ -2,7 +2,7 @@ package com.university.dto.request.admin;
 
 import java.util.UUID;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Getter
@@ -10,8 +10,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RolePermissionsAdminRequestDTO {
-    @NotBlank(message = "Id vai trò không được để trống")
+    @NotNull(message = "Id vai trò không được để trống")
     private UUID roleId;
-    @NotBlank(message = "Id quyền không được để trống")
+    @NotNull(message = "Id quyền không được để trống")
     private UUID permissionsId;
 }

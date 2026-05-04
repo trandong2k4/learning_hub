@@ -28,7 +28,7 @@ public class UsersAdminRequestDTO {
     private String hoTen;
     private String diaChi;
     private GioiTinhEnum gioiTinh;
-    @JsonFormat(pattern = "dd/MM/yyyy hh:mm:ss")
+    @JsonFormat(pattern = "dd/MM/yyyy")
     private LocalDate ngaySinh;
     @Length(max = 10, message = "Số điện thoại không quá 10 ki tự")
     private String soDienThoai;

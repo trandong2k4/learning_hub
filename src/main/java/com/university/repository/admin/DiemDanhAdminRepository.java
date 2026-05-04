@@ -20,4 +20,6 @@ public interface DiemDanhAdminRepository extends JpaRepository<DiemDanh, UUID> {
                 FROM DiemDanh d
             """)
     List<DiemDanhView> findAllView();
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

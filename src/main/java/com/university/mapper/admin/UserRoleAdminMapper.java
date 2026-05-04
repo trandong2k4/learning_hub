@@ -36,13 +36,9 @@ public class UserRoleAdminMapper {
         dto.setId(entity.getId());
         dto.setUserId(entity.getUsers().getId());
         dto.setRoleId(entity.getRole().getId());
-
-        // ⚠️ sửa đúng tên field trong Users
         dto.setUserName(entity.getUsers().getUsername());
-
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
-
         dto.setMaRole(entity.getRole().getMaRole());
 
         return dto;

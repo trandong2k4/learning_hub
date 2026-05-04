@@ -20,4 +20,6 @@ public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi,
                 FROM DangKyTinChi d
             """)
     List<DangKyTinChiAdminResponseDTO.DangKyTinChiView> findAllView();
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

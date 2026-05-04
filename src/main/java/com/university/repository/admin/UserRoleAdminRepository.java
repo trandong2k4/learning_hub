@@ -12,23 +12,25 @@ import java.util.UUID;
 
 @Repository
 public interface UserRoleAdminRepository extends JpaRepository<UserRole, UUID> {
-        boolean existsByRoleId(UUID roleId);
+    boolean existsByRoleId(UUID roleId);
 
-        boolean existsByUsersId(UUID usersId);
+    boolean existsByUsersId(UUID usersId);
 
-        @Query("""
-                            SELECT new com.university.dto.response.admin.UsersRoleAdminResponseDTO(
-                                ur.id,
-                                u.id,
-                                r.id,
-                                u.userName,
-                                ur.createdAt,
-                                ur.updatedAt,
-                                r.maRole
-                            )
-                            FROM UserRole ur
-                            JOIN ur.users u
-                            JOIN ur.role r
-                        """)
-        List<UsersRoleAdminResponseDTO> getAll();
+    @Query("""
+                SELECT new com.university.dto.response.admin.UsersRoleAdminResponseDTO(
+                    ur.id,
+                    u.id,
+                    r.id,
+                    u.userName,
+                    ur.createdAt,
+                    ur.updatedAt,
+                    r.maRole
+                )
+                FROM UserRole ur
+                JOIN ur.users u
+                JOIN ur.role r
+            """)
+    List<UsersRoleAdminResponseDTO> getAll();
+
+    void deleteAllByIdIn(List<UUID> ids);
 }

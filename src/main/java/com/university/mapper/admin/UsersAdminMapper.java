@@ -5,13 +5,22 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Component;
 import com.university.dto.request.admin.UsersAdminRequestDTO;
 import com.university.dto.response.admin.UsersAdminResponseDTO;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.university.entity.Users;
 
 @Component
 public class UsersAdminMapper {
 
-    public Users toEntity(UsersAdminRequestDTO dto, Users user) {
+    private final PasswordEncoder passwordEncoder;
+
+    public UsersAdminMapper(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    public Users toEntity(UsersAdminRequestDTO dto) {
+        Users user = new Users();
         user.setUserName(dto.getUserName());
+        user.setPassWord(passwordEncoder.encode(dto.getPassWord()));
         user.setEmail(dto.getEmail());
         user.setCccd(dto.getCccd());
         user.setHoTen(dto.getHoTen());
@@ -28,7 +37,7 @@ public class UsersAdminMapper {
 
     public UsersAdminResponseDTO updateEntity(Users users, UsersAdminRequestDTO dto) {
         users.setUserName(dto.getUserName());
-        users.setPassWord(dto.getPassWord());
+        users.setPassWord(passwordEncoder.encode(dto.getPassWord()));
         users.setEmail(dto.getEmail());
         users.setCccd(dto.getCccd());
         users.setHoTen(dto.getHoTen());

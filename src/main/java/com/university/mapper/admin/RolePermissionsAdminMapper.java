@@ -28,7 +28,6 @@ public class RolePermissionsAdminMapper {
             return null;
         RolePermissionsAdminResponseDTO dto = new RolePermissionsAdminResponseDTO();
         dto.setId(entity.getId());
-        dto.setRoleId(entity.getRole().getId());
         dto.setPermissionsId(entity.getPermissions().getId());
         dto.setStatus(true);
         return dto;

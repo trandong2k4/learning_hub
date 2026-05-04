@@ -23,9 +23,18 @@ public class DanhGiaGiangVienAdminResponseDTO {
 
         String getNhanXet();
 
-        UUID getNhanVienId();
+        NhanVienInfo getNhanVien();
 
-        UUID getLopHocPhanId();
+        interface NhanVienInfo {
+            UUID getId();
+        }
+
+        LopHocPhanInfo getLopHocPhan();
+
+        interface LopHocPhanInfo {
+            UUID getId();
+        }
+
     }
 
 }

@@ -11,7 +11,23 @@ import java.util.UUID;
 
 public interface KhoaAdminRepository extends JpaRepository<Khoa, UUID> {
 
+    // @Query("""
+    // SELECT COUNT(k) > 0
+    // FROM Khoa k
+    // WHERE k.truong.id = :truongId
+    // """)
+    boolean existsByTruongId(UUID truongId);
+
+    List<KhoaAdminResponseDTO.KhoaView> findAllProjectedBy();
+
+    KhoaAdminResponseDTO.KhoaView findAllProjectedById(UUID khoaId);
+
     boolean existsByMaKhoa(String maKhoa);
+
+    Khoa findByMaKhoa(String maKhoa);
+
+    @Query("SELECT k.maKhoa FROM Khoa k")
+    List<String> findAllMaKhoa();
 
     @Query("""
              SELECT new com.university.dto.response.admin.KhoaAdminResponseDTO(
@@ -59,5 +75,7 @@ public interface KhoaAdminRepository extends JpaRepository<Khoa, UUID> {
              WHERE LOWER(k.tenKhoa) LIKE LOWER(CONCAT('%', :keyword , '%'))
             """)
     List<KhoaAdminResponseDTO> findByNameKhoaDTO(@Param("keyword") String keyword);
+
+    void deleteAllByIdIn(List<UUID> ids);
 
 }

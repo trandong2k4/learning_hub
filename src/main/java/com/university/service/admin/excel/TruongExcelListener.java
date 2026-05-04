@@ -20,15 +20,16 @@ public class TruongExcelListener extends
 
     private final Set<String> maTruongInFile = new HashSet<>(); // Kiểm tra trùng trong file
 
-    private final Set<String> maPermissionsInDb;
+    private final Set<String> maTruongInDb;
 
     private static final int BATCH_COUNT = 100; // Tăng để hiệu suất tốt
 
     private int rowIndex = 1;
+    private int successCount = 0;
 
     public TruongExcelListener(TruongAdminRepository truongRepository) {
         this.truongRepository = truongRepository;
-        this.maPermissionsInDb = new HashSet<>(truongRepository.findAllMaTruong());
+        this.maTruongInDb = new HashSet<>(truongRepository.findAllMaTruong());
     }
 
     @Override
@@ -68,7 +69,7 @@ public class TruongExcelListener extends
         maTruongInFile.add(maTruong);
 
         // Kiểm tra tồn tại trong Database (cách này an toàn và rõ ràng)
-        if (maPermissionsInDb.contains(maTruong)) {
+        if (maTruongInDb.contains(maTruong)) {
             errors.add("Dòng " + rowIndex + ": Mã trường '" + maTruong + "' đã tồn tại trong cơ sở dữ liệu");
             return;
         }
@@ -89,6 +90,13 @@ public class TruongExcelListener extends
         if (!toSave.isEmpty()) {
             try {
                 truongRepository.saveAll(toSave);
+
+                // ✔ chỉ tăng khi save OK
+                successCount += toSave.size();
+
+                // ✔ update DB cache (tránh duplicate batch sau)
+                toSave.forEach(n -> maTruongInDb.add(n.getMaTruong()));
+
             } catch (Exception e) {
                 errors.add("Lỗi khi lưu batch: " + e.getMessage());
             } finally {
@@ -109,7 +117,7 @@ public class TruongExcelListener extends
     public ExcelImportResult getResult() {
         ExcelImportResult result = new ExcelImportResult();
         result.setTotalRows(rowIndex - 1); // Trừ đi header
-        result.setSuccessCount(toSave.isEmpty() ? (rowIndex - 1 - errors.size()) : 0); // Nếu còn dữ liệu chưa lưu, coi
+        result.setSuccessCount(successCount);
         // như chưa thành công
         result.setErrorCount(errors.size());
         result.setErrors(new ArrayList<>(errors));

@@ -11,11 +11,12 @@ import com.university.mapper.admin.UsersAdminMapper;
 import com.university.repository.admin.UsersAdminRepository;
 import com.university.service.admin.excel.UsersExcelListener;
 import com.university.service.auth.CustomUserDetailsService;
+
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,14 +29,12 @@ public class UsersAdminService implements CustomUserDetailsService {
 
     private final UsersAdminRepository usersAdminRepository;
     private final UsersAdminMapper usersMapper;
-    private final PasswordEncoder passwordEncoder;
     private final Set<String> userNameInDb;
 
     public UsersAdminService(UsersAdminRepository usersRepository, UsersAdminMapper usersMapper,
-            PasswordEncoder passwordEncoder, Set<String> userNameInDb) {
+            Set<String> userNameInDb) {
         this.usersAdminRepository = usersRepository;
         this.usersMapper = usersMapper;
-        this.passwordEncoder = passwordEncoder;
         this.userNameInDb = userNameInDb;
     }
 
@@ -51,13 +50,13 @@ public class UsersAdminService implements CustomUserDetailsService {
     }
 
     public UsersAdminResponseDTO create(UsersAdminRequestDTO dto) {
-        Users users = new Users();
-        users.setPassWord(passwordEncoder.encode(dto.getPassWord()));
+
         userNameInDb.addAll(usersAdminRepository.findAllUserNames());
         if (userNameInDb.contains(dto.getUserName())) {
             throw new SimpleMessageException("UserName đã tồn tại");
         }
-        return usersMapper.toResponseDTO(usersAdminRepository.save(usersMapper.toEntity(dto, users)));
+        Users users = usersMapper.toEntity(dto);
+        return usersMapper.toResponseDTO(usersAdminRepository.save(users));
     }
 
     public List<UsersAdminResponseDTO> getAll() {
@@ -67,7 +66,7 @@ public class UsersAdminService implements CustomUserDetailsService {
     public UsersAdminResponseDTO getById(UUID id) {
         UsersAdminResponseDTO users = usersAdminRepository.findUsersById(id);
         if (users.equals(null)) {
-            throw new RuntimeException("Users không tồn tại");
+            throw new EntityNotFoundException("Users không tồn tại");
         }
         return users;
     }
@@ -102,14 +101,22 @@ public class UsersAdminService implements CustomUserDetailsService {
     }
 
     @Transactional
-    public void deleteMultiple(List<UUID> ids) {
-        usersAdminRepository.deleteAllByIdInBatch(ids);
-    }
+    public void deleteAllByList(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        try {
+            // Kiem tra user dang co trong cac db khac khong
+            // for (UUID uuid : ids) {
+            // if (usersAdminRepository.) {
 
-    @Transactional
-    public void deleteAll() {
-        usersAdminRepository.deleteAll();
-        ;
+            // }
+            // }
+            usersAdminRepository.deleteAllByIdIn(ids);
+
+        } catch (Exception e) {
+            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        }
     }
 
     public List<String> dSNameRoleUSers(UUID id) {
