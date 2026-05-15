@@ -7,7 +7,7 @@ import java.lang.annotation.*;
  * Có thể đặt ở cấp class (áp dụng cho tất cả method) hoặc cấp method.
  * Quyền ở cấp method sẽ ghi đè quyền ở cấp class.
  */
-@Target({ElementType.TYPE, ElementType.METHOD})
+@Target({ ElementType.TYPE, ElementType.METHOD })
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface RequirePermission {
