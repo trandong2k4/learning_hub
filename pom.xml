@@ -201,6 +201,9 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<!-- <version>3.3.4</version> dùng version mới nhất -->
+				<configuration>
+					<mainClass>com.university.ManagementApplication</mainClass>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
