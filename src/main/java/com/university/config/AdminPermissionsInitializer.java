@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 @Configuration
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(prefix = "app.permissions", name = "bootstrap-enabled", havingValue = "true", matchIfMissing = true)
 public class AdminPermissionsInitializer {
 
     private final PermissionsAdminRepository permissionsRepository;
@@ -34,8 +36,9 @@ public class AdminPermissionsInitializer {
 
     @Bean
     public ApplicationRunner adminPermissionsRunner(
-            @Value("${app.permissions.auto-assign:false}") boolean autoAssign) {
+            @Value("${app.permissions.auto-assign:true}") boolean autoAssign) {
         return args -> {
+            log.info("=== Initializing Admin Permissions ===");
 
             List<String> permissionCodes = Arrays.stream(AdminPermission.values())
                     .map(Enum::name)
@@ -64,8 +67,7 @@ public class AdminPermissionsInitializer {
             // 3. Bo qua buoc gan role neu khong cho phep
             if (!autoAssign) {
                 log.info("PERMISSIONS_AUTO_ASSIGN=false — bo qua gan quyen vao role");
-                log.info("=== Admin Permissions Initialization Complete ({} permissions created) ===",
-                        permissionCodes.size());
+                log.info("=== Admin Permissions Initialization Complete ({} permissions created) ===", permissionCodes.size());
                 return;
             }
 

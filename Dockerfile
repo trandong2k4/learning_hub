@@ -17,8 +17,8 @@ RUN mvn clean package -DskipTests
 
 
 # Stage 2: Giai đoạn Runtime (Chạy ứng dụng)
-# Sử dụng image JDK 21 gọn nhẹ hơn
-FROM eclipse-temurin:21-jdk
+# Dùng JRE thay vì JDK để giảm footprint của image runtime
+FROM eclipse-temurin:21-jre
 
 # Tạo thư mục làm việc
 WORKDIR /app
@@ -26,8 +26,13 @@ WORKDIR /app
 # Copy file .jar đã được build từ Stage 1 (có tên là "build")
 COPY --from=build /app/target/management-0.0.1-SNAPSHOT.jar app.jar
 
-# Mở cổng 8080 (cổng Spring Boot của bạn đang chạy)
-EXPOSE 8080
+# Profile và giới hạn JVM mặc định cho instance nhỏ trên Render.
+# Render vẫn có thể override các giá trị này bằng biến môi trường khi cần.
+ENV SPRING_PROFILES_ACTIVE=render
+ENV JAVA_TOOL_OPTIONS="-Xms64m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=192m -XX:MaxDirectMemorySize=64m -XX:+ExitOnOutOfMemoryError"
+
+# Mở cổng mặc định của Render khi biến PORT không được override
+EXPOSE 10000
 
 # Lệnh để chạy ứng dụng
 ENTRYPOINT ["java", "-jar", "app.jar"]
