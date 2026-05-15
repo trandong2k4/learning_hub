@@ -202,7 +202,7 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<!-- <version>3.3.4</version> dùng version mới nhất -->
 				<configuration>
-					<mainClass>com.university.ManagementApplication</mainClass>
+					<jvmArguments>-Xms256m -Xmx512m</jvmArguments>
 				</configuration>
 			</plugin>
 			<plugin>
