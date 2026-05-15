@@ -1,14 +1,15 @@
 package com.university.dto.request.admin;
 
-import java.time.LocalDateTime;
-
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.university.entity.Users;
 import com.university.enums.LoaiThongBaoEnum;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -18,11 +19,17 @@ public class ThongBaoAdminRequestDTO {
 
     @NotBlank(message = "Tiêu đề không được để trống")
     private String tieuDe;
+
+    @NotBlank(message = "Nội dung không được để trống")
     private String noiDung;
+
     private String fileThongBao;
+
+    @NotNull(message = "Loại thông báo không được để trống")
     private LoaiThongBaoEnum loaiThongBao;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
-    private LocalDateTime createdAt;
-    @NotNull(message = "Id users không được để trống")
-    private Users usersId;
+
+    @NotNull(message = "Id người gửi không được để trống")
+    private UUID usersId;
+
+    private List<UUID> userIds;
 }

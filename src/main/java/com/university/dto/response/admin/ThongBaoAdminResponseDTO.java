@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.university.entity.Users;
 import com.university.enums.LoaiThongBaoEnum;
 
 import lombok.*;
@@ -20,9 +19,13 @@ public class ThongBaoAdminResponseDTO {
     private String noiDung;
     private String fileThongBao;
     private LoaiThongBaoEnum loaiThongBao;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+    @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")
     private LocalDateTime createdAt;
-    private Users usersId;
+    private UUID usersId;
+    private String userName;
+    private String hoTen;
+    private Long soNguoiNhan;
+    private Long soNguoiDaNhan;
 
     public interface ThongBaoView {
         UUID getId();

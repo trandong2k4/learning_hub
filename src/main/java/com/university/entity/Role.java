@@ -22,7 +22,7 @@ public class Role {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "ma_role", length = 30, unique = true, nullable = false)
+    @Column(name = "ma_role", length = 50, unique = true, nullable = false)
     private String maRole;
 
     private String moTa;

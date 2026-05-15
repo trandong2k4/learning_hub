@@ -2,14 +2,13 @@ package com.university.service.student;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.university.config.SecurityUtils;
+import com.university.dto.request.student.DanhGiaGiangVienDraftRequest;
 import com.university.dto.request.student.DanhGiaGiangVienStudentRequest;
 import com.university.dto.response.student.DanhGiaGiangVienStudentResponse;
 import com.university.entity.DangKyTinChi;
 import com.university.entity.DanhGiaGiangVien;
 import com.university.entity.GiangDay;
 import com.university.entity.LopHocPhan;
-import com.university.enums.TrangThaiLHP;
 import com.university.exception.ResourceNotFoundException;
 import com.university.repository.student.DangKyTinChiRepository;
 import com.university.repository.student.DanhGiaGiangVienStudentRepository;
@@ -19,8 +18,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -40,38 +41,66 @@ public class DanhGiaGiangVienStudentService {
     private final DanhGiaGiangVienStudentRepository danhGiaGiangVienStudentRepository;
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final CurrentHocVienService currentHocVienService;
 
     @Transactional(readOnly = true)
     public List<DanhGiaGiangVienStudentResponse> getDanhSachDanhGia() {
-        UUID hocVienId = SecurityUtils.getCurrentHocVienId();
-        List<DangKyTinChi> completedCourses = getCompletedCourses(hocVienId);
+        UUID hocVienId = currentHocVienService.getCurrentHocVienId();
+        List<DangKyTinChi> registrations = dangKyTinChiRepository.findAllByHocVienId(hocVienId);
 
-        if (completedCourses.isEmpty()) {
+        if (registrations.isEmpty()) {
             return List.of();
         }
 
-        Map<UUID, GiangDay> giangVienByLopHocPhan = giangDayStudentRepository.findByLopHocPhanIds(
-                        completedCourses.stream().map(dk -> dk.getLopHocPhan().getId()).toList())
+        List<LopHocPhan> lopHocPhans = registrations.stream()
+                .map(DangKyTinChi::getLopHocPhan)
+                .toList();
+
+        List<UUID> lopHocPhanIds = lopHocPhans.stream().map(LopHocPhan::getId).toList();
+
+        Map<UUID, GiangDay> giangVienByLopHocPhan = giangDayStudentRepository
+                .findByLopHocPhanIds(lopHocPhanIds)
                 .stream()
                 .collect(Collectors.toMap(
                         gd -> gd.getLopHocPhan().getId(),
                         Function.identity(),
                         this::pickPreferredGiangVien));
 
-        return completedCourses.stream()
-                .map(DangKyTinChi::getLopHocPhan)
+        // Batch Redis: 1 multiGet cho submit keys, 1 cho draft keys
+        List<String> submitKeys = lopHocPhanIds.stream()
+                .map(id -> submitKey(hocVienId, id)).toList();
+        List<String> draftKeys = lopHocPhanIds.stream()
+                .map(id -> draftKey(hocVienId, id)).toList();
+
+        List<String> submitValues = redisTemplate.opsForValue().multiGet(submitKeys);
+        List<String> draftValues = redisTemplate.opsForValue().multiGet(draftKeys);
+
+        // Map lopHocPhanId -> index để tra O(1)
+        Map<UUID, Integer> idxMap = new HashMap<>();
+        for (int i = 0; i < lopHocPhanIds.size(); i++) {
+            idxMap.put(lopHocPhanIds.get(i), i);
+        }
+
+        return lopHocPhans.stream()
                 .filter(lhp -> giangVienByLopHocPhan.containsKey(lhp.getId()))
                 .sorted(Comparator.comparing(LopHocPhan::getMaLopHocPhan))
-                .map(lhp -> toResponse(
-                        hocVienId,
-                        lhp,
-                        giangVienByLopHocPhan.get(lhp.getId()),
-                        readDraft(hocVienId, lhp.getId())))
+                .<DanhGiaGiangVienStudentResponse>map(lhp -> {
+                    int idx = idxMap.get(lhp.getId());
+                    String submitRaw = submitValues != null ? submitValues.get(idx) : null;
+                    String draftRaw = draftValues != null ? draftValues.get(idx) : null;
+
+                    boolean daGui = submitRaw != null;
+                    DraftPayload displayPayload = daGui
+                            ? deserializePayload(submitRaw)
+                            : deserializePayload(draftRaw);
+
+                    return toResponse(lhp, giangVienByLopHocPhan.get(lhp.getId()), displayPayload, daGui);
+                })
                 .toList();
     }
 
-    public DanhGiaGiangVienStudentResponse saveDraft(DanhGiaGiangVienStudentRequest request) {
-        UUID hocVienId = SecurityUtils.getCurrentHocVienId();
+    public DanhGiaGiangVienStudentResponse saveDraft(DanhGiaGiangVienDraftRequest request) {
+        UUID hocVienId = currentHocVienService.getCurrentHocVienId();
         LopHocPhan lopHocPhan = validateEligibleCourse(hocVienId, request.getLopHocPhanId());
         GiangDay giangDay = getAssignedGiangVien(lopHocPhan.getId());
 
@@ -79,72 +108,71 @@ public class DanhGiaGiangVienStudentService {
             throw new IllegalStateException("Môn học này đã được đánh giá");
         }
 
-        DraftPayload draft = new DraftPayload(request.getDiemDanhGia(), request.getNhanXet().trim());
-        writeDraft(hocVienId, lopHocPhan.getId(), draft);
+        String nhanXet = request.getNhanXet() != null ? request.getNhanXet().trim() : null;
+        DraftPayload draft = new DraftPayload(request.getDiemDanhGia(), nhanXet);
 
-        return toResponse(hocVienId, lopHocPhan, giangDay, draft);
+        // TTL = thời gian còn lại đến khi đóng cửa sổ đánh giá
+        LocalDateTime dongCuaSo = lopHocPhan.getHocKi().getNgayKetThuc()
+                .plusDays(EVALUATION_WINDOW_DAYS);
+        long remainingSeconds = Duration.between(LocalDateTime.now(), dongCuaSo).getSeconds();
+        writeDraft(hocVienId, lopHocPhan.getId(), draft, Math.max(remainingSeconds, 1));
+
+        return toResponse(lopHocPhan, giangDay, draft, false);
     }
 
     public DanhGiaGiangVienStudentResponse submit(DanhGiaGiangVienStudentRequest request) {
-        UUID hocVienId = SecurityUtils.getCurrentHocVienId();
+        UUID hocVienId = currentHocVienService.getCurrentHocVienId();
         LopHocPhan lopHocPhan = validateEligibleCourse(hocVienId, request.getLopHocPhanId());
         GiangDay giangDay = getAssignedGiangVien(lopHocPhan.getId());
 
-        if (isSubmitted(hocVienId, lopHocPhan.getId())) {
+        DraftPayload submittedPayload = new DraftPayload(
+                request.getDiemDanhGia(), request.getNhanXet().trim());
+
+        // Atomic SET NX: vừa chặn race condition vừa lưu payload để hiển thị sau
+        Boolean claimed = redisTemplate.opsForValue().setIfAbsent(
+                submitKey(hocVienId, lopHocPhan.getId()),
+                serializePayload(submittedPayload),
+                3650, TimeUnit.DAYS);
+
+        if (Boolean.FALSE.equals(claimed)) {
             throw new IllegalStateException("Môn học này đã được đánh giá");
         }
 
-        DanhGiaGiangVien danhGia = new DanhGiaGiangVien();
-        danhGia.setLopHocPhan(lopHocPhan);
-        danhGia.setNhanVien(giangDay.getNhanVien());
-        danhGia.setDiemDanhGia(request.getDiemDanhGia().floatValue());
-        danhGia.setNhanXet(request.getNhanXet().trim());
-        danhGiaGiangVienStudentRepository.save(danhGia);
+        try {
+            DanhGiaGiangVien danhGia = new DanhGiaGiangVien();
+            danhGia.setLopHocPhan(lopHocPhan);
+            danhGia.setNhanVien(giangDay.getNhanVien());
+            danhGia.setDiemDanhGia(request.getDiemDanhGia().floatValue());
+            danhGia.setNhanXet(request.getNhanXet().trim());
+            danhGiaGiangVienStudentRepository.save(danhGia);
+        } catch (Exception e) {
+            // Rollback Redis nếu DB lỗi để không mất khả năng submit lại
+            redisTemplate.delete(submitKey(hocVienId, lopHocPhan.getId()));
+            throw e;
+        }
 
-        markSubmitted(hocVienId, lopHocPhan.getId());
         clearDraft(hocVienId, lopHocPhan.getId());
-
-        return toResponse(hocVienId, lopHocPhan, giangDay, new DraftPayload(
-                request.getDiemDanhGia(),
-                request.getNhanXet().trim()));
-    }
-
-    private List<DangKyTinChi> getCompletedCourses(UUID hocVienId) {
-        return dangKyTinChiRepository.findByHocVienIdAndTrangThai(hocVienId, TrangThaiLHP.DA_KET_THUC);
+        return toResponse(lopHocPhan, giangDay, submittedPayload, true);
     }
 
     private LopHocPhan validateEligibleCourse(UUID hocVienId, UUID lopHocPhanId) {
-        DangKyTinChi dangKy = getCompletedCourses(hocVienId).stream()
-                .filter(item -> item.getLopHocPhan().getId().equals(lopHocPhanId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Bạn chỉ được đánh giá giảng viên của môn đã hoàn thành"));
+        DangKyTinChi dangKy = dangKyTinChiRepository
+                .findByHocVienIdAndLopHocPhanId(hocVienId, lopHocPhanId)
+                .orElseThrow(() -> new IllegalStateException("Bạn chỉ được đánh giá giảng viên của môn đã đăng ký"));
 
         LopHocPhan lopHocPhan = dangKy.getLopHocPhan();
-        validateEvaluationWindow(lopHocPhan);
+
+        LocalDateTime ngayKetThuc = lopHocPhan.getHocKi() != null
+                ? lopHocPhan.getHocKi().getNgayKetThuc()
+                : null;
+        if (ngayKetThuc == null || LocalDateTime.now().isBefore(ngayKetThuc)) {
+            throw new IllegalStateException("Môn học chưa kết thúc, chưa thể đánh giá giảng viên");
+        }
+        if (LocalDateTime.now().isAfter(ngayKetThuc.plusDays(EVALUATION_WINDOW_DAYS))) {
+            throw new IllegalStateException("Đã hết thời hạn đánh giá (30 ngày kể từ ngày kết thúc học kỳ)");
+        }
+
         return lopHocPhan;
-    }
-
-    private void validateEvaluationWindow(LopHocPhan lopHocPhan) {
-        LocalDateTime start = getEvaluationOpenTime(lopHocPhan);
-        LocalDateTime end = getEvaluationCloseTime(lopHocPhan);
-        LocalDateTime now = LocalDateTime.now();
-
-        if (start == null || end == null) {
-            throw new IllegalStateException("Chưa đủ dữ liệu để mở đánh giá cho lớp học phần này");
-        }
-        if (now.isBefore(start) || now.isAfter(end)) {
-            throw new IllegalStateException("Ngoài thời gian cho phép đánh giá");
-        }
-    }
-
-    // Không đổi entity nên cửa sổ đánh giá được suy ra từ ngày kết thúc học kỳ.
-    private LocalDateTime getEvaluationOpenTime(LopHocPhan lopHocPhan) {
-        return lopHocPhan.getHocKi() != null ? lopHocPhan.getHocKi().getNgayKetThuc() : null;
-    }
-
-    private LocalDateTime getEvaluationCloseTime(LopHocPhan lopHocPhan) {
-        LocalDateTime start = getEvaluationOpenTime(lopHocPhan);
-        return start != null ? start.plusDays(EVALUATION_WINDOW_DAYS) : null;
     }
 
     private GiangDay getAssignedGiangVien(UUID lopHocPhanId) {
@@ -159,26 +187,28 @@ public class DanhGiaGiangVienStudentService {
     }
 
     private int scoreRole(String vaiTro) {
-        if (vaiTro == null) {
+        if (vaiTro == null)
             return 0;
-        }
         String normalized = vaiTro.toLowerCase();
         return (normalized.contains("chính") || normalized.contains("chinh")) ? 2 : 1;
     }
 
     private DanhGiaGiangVienStudentResponse toResponse(
-            UUID hocVienId,
             LopHocPhan lopHocPhan,
             GiangDay giangDay,
-            DraftPayload draft) {
+            DraftPayload payload,
+            boolean daGui) {
 
-        boolean daGui = isSubmitted(hocVienId, lopHocPhan.getId());
-        LocalDateTime moDanhGia = getEvaluationOpenTime(lopHocPhan);
-        LocalDateTime dongDanhGia = getEvaluationCloseTime(lopHocPhan);
+        LocalDateTime ngayKetThuc = lopHocPhan.getHocKi() != null
+                ? lopHocPhan.getHocKi().getNgayKetThuc()
+                : null;
+        LocalDateTime ngayDongDanhGia = ngayKetThuc != null
+                ? ngayKetThuc.plusDays(EVALUATION_WINDOW_DAYS)
+                : null;
         LocalDateTime now = LocalDateTime.now();
-        boolean coTheDanhGia = moDanhGia != null && dongDanhGia != null
-                && !now.isBefore(moDanhGia)
-                && !now.isAfter(dongDanhGia)
+        boolean coTheDanhGia = ngayKetThuc != null
+                && now.isAfter(ngayKetThuc)
+                && now.isBefore(ngayDongDanhGia)
                 && !daGui;
 
         return DanhGiaGiangVienStudentResponse.builder()
@@ -188,54 +218,53 @@ public class DanhGiaGiangVienStudentService {
                 .nhanVienId(giangDay.getNhanVien().getId())
                 .maNhanVien(giangDay.getNhanVien().getMaNhanVien())
                 .tenGiangVien(giangDay.getNhanVien().getUsers().getHoTen())
-                .diemDanhGia(draft != null ? draft.diemDanhGia() : null)
-                .nhanXet(draft != null ? draft.nhanXet() : null)
+                .diemDanhGia(payload != null ? payload.diemDanhGia() : null)
+                .nhanXet(payload != null ? payload.nhanXet() : null)
                 .daGui(daGui)
                 .coTheDanhGia(coTheDanhGia)
-                .thoiGianMoDanhGia(moDanhGia)
-                .thoiGianDongDanhGia(dongDanhGia)
+                .thoiGianMoDanhGia(ngayKetThuc)
+                .thoiGianDongDanhGia(ngayDongDanhGia)
+                .hocKiId(lopHocPhan.getHocKi() != null ? lopHocPhan.getHocKi().getId() : null)
+                .maHocKi(lopHocPhan.getHocKi() != null ? lopHocPhan.getHocKi().getMaHocKi() : null)
+                .tenHocKi(lopHocPhan.getHocKi() != null ? lopHocPhan.getHocKi().getTenHocKi() : null)
+                .ngayBatDauHocKi(lopHocPhan.getHocKi() != null ? lopHocPhan.getHocKi().getNgayBatDau() : null)
                 .build();
     }
 
-    private DraftPayload readDraft(UUID hocVienId, UUID lopHocPhanId) {
-        String raw = redisTemplate.opsForValue().get(draftKey(hocVienId, lopHocPhanId));
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-
-        try {
-            return objectMapper.readValue(raw, DraftPayload.class);
-        } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Không đọc được dữ liệu nháp đánh giá");
-        }
-    }
-
-    private void writeDraft(UUID hocVienId, UUID lopHocPhanId, DraftPayload draft) {
-        try {
-            redisTemplate.opsForValue().set(
-                    draftKey(hocVienId, lopHocPhanId),
-                    objectMapper.writeValueAsString(draft),
-                    EVALUATION_WINDOW_DAYS,
-                    TimeUnit.DAYS);
-        } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Không lưu được nháp đánh giá");
-        }
-    }
-
-    private void clearDraft(UUID hocVienId, UUID lopHocPhanId) {
-        redisTemplate.delete(draftKey(hocVienId, lopHocPhanId));
-    }
+    // ── Redis helpers ────────────────────────────────────────────────────────────
 
     private boolean isSubmitted(UUID hocVienId, UUID lopHocPhanId) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(submitKey(hocVienId, lopHocPhanId)));
     }
 
-    private void markSubmitted(UUID hocVienId, UUID lopHocPhanId) {
+    private DraftPayload deserializePayload(String raw) {
+        if (raw == null || raw.isBlank())
+            return null;
+        try {
+            return objectMapper.readValue(raw, DraftPayload.class);
+        } catch (JsonProcessingException ex) {
+            return null;
+        }
+    }
+
+    private String serializePayload(DraftPayload payload) {
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Lỗi xử lý dữ liệu đánh giá");
+        }
+    }
+
+    private void writeDraft(UUID hocVienId, UUID lopHocPhanId, DraftPayload draft, long ttlSeconds) {
         redisTemplate.opsForValue().set(
-                submitKey(hocVienId, lopHocPhanId),
-                "1",
-                3650,
-                TimeUnit.DAYS);
+                draftKey(hocVienId, lopHocPhanId),
+                serializePayload(draft),
+                ttlSeconds,
+                TimeUnit.SECONDS);
+    }
+
+    private void clearDraft(UUID hocVienId, UUID lopHocPhanId) {
+        redisTemplate.delete(draftKey(hocVienId, lopHocPhanId));
     }
 
     private String draftKey(UUID hocVienId, UUID lopHocPhanId) {

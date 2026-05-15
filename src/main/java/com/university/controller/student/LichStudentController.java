@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
+import com.university.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 @RequestMapping("/api/student/schedule")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('STUDENT')")
+@RequirePermission("STU_SCHEDULE_VIEW")
 public class LichStudentController {
 
     private final LichStudentService lichStudentService;

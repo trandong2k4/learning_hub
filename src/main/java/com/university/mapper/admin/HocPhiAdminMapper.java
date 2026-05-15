@@ -1,51 +1,57 @@
 package com.university.mapper.admin;
 
 import com.university.dto.response.admin.HocPhiAdminResponseDTO;
+import com.university.entity.HocKi;
 import com.university.entity.HocPhi;
-import org.springframework.stereotype.Component;
+import com.university.entity.HocVien;
+import com.university.entity.ThanhToanHocPhi;
 
-import java.time.LocalDateTime;
+import org.springframework.stereotype.Component;
 
 @Component
 public class HocPhiAdminMapper {
 
-    // Giả sử bạn có HocPhiAdminRequestDTO tương ứng
-    // public HocPhi toEntity(HocPhiAdminRequestDTO dto) { ... }
-
-    /**
-     * Chuyển từ Entity sang Response DTO
-     */
     public HocPhiAdminResponseDTO toResponseDTO(HocPhi entity) {
         if (entity == null)
             return null;
 
-        HocPhiAdminResponseDTO dto = new HocPhiAdminResponseDTO();
-        dto.setId(entity.getId());
-        dto.setSoTien(entity.getSoTien());
-        dto.setTrangThai(entity.getTrangThai());
-        dto.setSoTinChi(entity.getSoTinChi());
-        dto.setCreatedAt(entity.getCreatedAt());
-        dto.setUpdatedAt(entity.getUpdatedAt());
+        HocVien hocVien = entity.getHocVien();
+        HocKi hocKi = entity.getHocKi();
+        ThanhToanHocPhi thanhToan = entity.getThanhToanHocPhi();
 
-        // Ánh xạ ID từ quan hệ HocVien
-        if (entity.getHocVien() != null) {
-            dto.setHocVienId(entity.getHocVien().getId());
+        HocPhiAdminResponseDTO dto = HocPhiAdminResponseDTO.builder()
+                .id(entity.getId())
+                .soTien(entity.getSoTien())
+                .trangThai(entity.getTrangThai())
+                .soTinChi(entity.getSoTinChi())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+
+        if (hocVien != null) {
+            dto.setHocVienId(hocVien.getId());
+            if (hocVien.getUsers() != null) {
+                dto.setHocVienHoTen(hocVien.getUsers().getHoTen());
+                dto.setHocVienEmail(hocVien.getUsers().getEmail());
+            }
+            dto.setHocVienMa(hocVien.getMaHocVien());
         }
 
-        // Ánh xạ ID từ quan hệ HocKi
-        if (entity.getHocKi() != null) {
-            dto.setHocKiId(entity.getHocKi().getId());
+        if (hocKi != null) {
+            dto.setHocKiId(hocKi.getId());
+            dto.setHocKiMa(hocKi.getMaHocKi());
+            dto.setHocKiTen(hocKi.getTenHocKi());
+        }
+
+        if (thanhToan != null) {
+            dto.setThanhToanMaGiaoDich(thanhToan.getMaGiaoDichGateway());
+            dto.setThanhToanPhuongThuc(thanhToan.getPhuongThucThanhToan());
+            dto.setThanhToanNgay(thanhToan.getNgayThanhToan());
+            dto.setSoTienConNo(entity.getSoTien());
+        } else {
+            dto.setSoTienConNo(entity.getSoTien());
         }
 
         return dto;
-    }
-
-    /**
-     * Cập nhật thời gian và trạng thái (Ví dụ dùng trong Service)
-     */
-    public void updateAudit(HocPhi entity) {
-        if (entity != null) {
-            entity.setUpdatedAt(LocalDateTime.now());
-        }
     }
 }

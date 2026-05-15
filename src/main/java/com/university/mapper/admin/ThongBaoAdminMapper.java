@@ -5,14 +5,9 @@ import com.university.dto.response.admin.ThongBaoAdminResponseDTO;
 import com.university.entity.ThongBao;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-
 @Component
 public class ThongBaoAdminMapper {
 
-    /**
-     * Chuyển từ Request DTO sang Entity để lưu mới
-     */
     public ThongBao toEntity(ThongBaoAdminRequestDTO dto) {
         if (dto == null) {
             return null;
@@ -23,21 +18,11 @@ public class ThongBaoAdminMapper {
         entity.setNoiDung(dto.getNoiDung());
         entity.setFileThongBao(dto.getFileThongBao());
         entity.setLoaiThongBao(dto.getLoaiThongBao());
-
-        // Thiết lập thời gian tạo
-        entity.setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt() : LocalDateTime.now());
-
-        // Gán trực tiếp đối tượng Users từ DTO (theo cấu trúc DTO hiện tại của bạn)
-        entity.setUsers(dto.getUsersId());
-
         return entity;
     }
 
-    /**
-     * Cập nhật thông tin Entity hiện có từ DTO
-     */
     public void updateEntity(ThongBao entity, ThongBaoAdminRequestDTO dto) {
-        if (dto == null || entity == null) {
+        if (entity == null || dto == null) {
             return;
         }
 
@@ -45,15 +30,8 @@ public class ThongBaoAdminMapper {
         entity.setNoiDung(dto.getNoiDung());
         entity.setFileThongBao(dto.getFileThongBao());
         entity.setLoaiThongBao(dto.getLoaiThongBao());
-
-        // Thường không cập nhật lại người tạo (Users) và thời gian tạo ban đầu
-        // Nếu có trường updatedAt, bạn có thể set ở đây:
-        // entity.setUpdatedAt(LocalDateTime.now());
     }
 
-    /**
-     * Chuyển từ Entity sang Response DTO để trả về cho Client
-     */
     public ThongBaoAdminResponseDTO toResponseDTO(ThongBao entity) {
         if (entity == null) {
             return null;
@@ -67,9 +45,16 @@ public class ThongBaoAdminMapper {
         dto.setLoaiThongBao(entity.getLoaiThongBao());
         dto.setCreatedAt(entity.getCreatedAt());
 
-        // Trả về đối tượng Users (theo cấu trúc DTO hiện tại của bạn)
-        dto.setUsersId(entity.getUsers());
+        if (entity.getUsers() != null) {
+            dto.setUsersId(entity.getUsers().getId());
+            dto.setUserName(entity.getUsers().getUsername());
+            dto.setHoTen(entity.getUsers().getHoTen());
+        }
 
+        dto.setSoNguoiNhan((long) entity.getNguoiNhanList().size());
+        dto.setSoNguoiDaNhan(entity.getNguoiNhanList().stream()
+                .filter(item -> Boolean.TRUE.equals(item.getDaNhan()))
+                .count());
         return dto;
     }
 }

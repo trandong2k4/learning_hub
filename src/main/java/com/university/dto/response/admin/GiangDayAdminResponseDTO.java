@@ -1,6 +1,7 @@
 package com.university.dto.response.admin;
 
 import java.util.UUID;
+
 import lombok.*;
 
 @Getter
@@ -11,26 +12,17 @@ public class GiangDayAdminResponseDTO {
 
     private UUID id;
     private String vaiTro;
+
     private UUID nhanVienId;
+    private String maNhanVien;
+    private String tenNhanVien;
+
     private UUID lopHocPhanId;
+    private String maLopHocPhan;
+    private String tenMonHoc;
+    private Integer soTinChi;
 
-    public interface GiangDayView {
-
-        UUID getId();
-
-        String getVaiTro();
-
-        NhanVienInfo getNhanVien();
-
-        LopHocPhanInfo getLopHocPhan();
-
-        interface NhanVienInfo {
-            UUID getId();
-        }
-
-        interface LopHocPhanInfo {
-            UUID getId();
-        }
-    }
-
+    private UUID hocKiId;
+    private String maHocKi;
+    private String tenHocKi;
 }

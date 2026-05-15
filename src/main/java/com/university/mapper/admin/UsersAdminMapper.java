@@ -26,7 +26,8 @@ public class UsersAdminMapper {
         user.setHoTen(dto.getHoTen());
         user.setDiaChi(dto.getDiaChi());
         user.setGioiTinh(dto.getGioiTinh());
-        user.setNgaySinh(dto.getNgaySinh().atStartOfDay());
+        if (dto.getNgaySinh() != null)
+            user.setNgaySinh(dto.getNgaySinh().atStartOfDay());
         user.setSoDienThoai(dto.getSoDienThoai());
         user.setTrangThai(dto.getTrangThai());
         user.setGhiChu(dto.getGhiChu());
@@ -35,28 +36,29 @@ public class UsersAdminMapper {
         return user;
     }
 
-    public UsersAdminResponseDTO updateEntity(Users users, UsersAdminRequestDTO dto) {
+    public void updateEntity(Users users, UsersAdminRequestDTO dto) {
         users.setUserName(dto.getUserName());
-        users.setPassWord(passwordEncoder.encode(dto.getPassWord()));
+        if (dto.getPassWord() != null && !dto.getPassWord().isBlank()) {
+            users.setPassWord(passwordEncoder.encode(dto.getPassWord()));
+        }
         users.setEmail(dto.getEmail());
         users.setCccd(dto.getCccd());
         users.setHoTen(dto.getHoTen());
         users.setDiaChi(dto.getDiaChi());
         users.setGioiTinh(dto.getGioiTinh());
-        users.setNgaySinh(dto.getNgaySinh().atStartOfDay());
+        if (dto.getNgaySinh() != null) {
+            users.setNgaySinh(dto.getNgaySinh().atStartOfDay());
+        }
         users.setSoDienThoai(dto.getSoDienThoai());
         users.setTrangThai(dto.getTrangThai());
         users.setGhiChu(dto.getGhiChu());
         users.setUpdateAt(LocalDateTime.now());
-
-        return toResponseDTO(users);
     }
 
     public UsersAdminResponseDTO toResponseDTO(Users users) {
         UsersAdminResponseDTO dto = new UsersAdminResponseDTO();
         dto.setId(users.getId());
         dto.setUserName(users.getUsername());
-        dto.setPassWord(users.getPassword());
         dto.setEmail(users.getEmail());
         dto.setCccd(users.getCccd());
         dto.setHoTen(users.getHoTen());

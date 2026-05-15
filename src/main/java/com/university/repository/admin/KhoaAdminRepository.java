@@ -11,12 +11,7 @@ import java.util.UUID;
 
 public interface KhoaAdminRepository extends JpaRepository<Khoa, UUID> {
 
-    // @Query("""
-    // SELECT COUNT(k) > 0
-    // FROM Khoa k
-    // WHERE k.truong.id = :truongId
-    // """)
-    boolean existsByTruongId(UUID truongId);
+    // boolean existsByTruongId(UUID truongId);
 
     List<KhoaAdminResponseDTO.KhoaView> findAllProjectedBy();
 
@@ -35,12 +30,9 @@ public interface KhoaAdminRepository extends JpaRepository<Khoa, UUID> {
                  k.maKhoa,
                  k.tenKhoa,
                  k.diaChi,
-                 k.moTa,
-                 t.id,
-                 t.tenTruong
+                 k.moTa
              )
              FROM Khoa k
-             JOIN k.truong t
             """)
     List<KhoaAdminResponseDTO> findAllKhoaDTO();
 
@@ -50,12 +42,9 @@ public interface KhoaAdminRepository extends JpaRepository<Khoa, UUID> {
                  k.maKhoa,
                  k.tenKhoa,
                  k.diaChi,
-                 k.moTa,
-                 t.id,
-                 t.tenTruong
+                 k.moTa
              )
              FROM Khoa k
-             JOIN k.truong t
              WHERE k.id = :khoaId
             """)
     KhoaAdminResponseDTO findByIdKhoaDTO(@Param("khoaId") UUID khoaId);
@@ -66,12 +55,9 @@ public interface KhoaAdminRepository extends JpaRepository<Khoa, UUID> {
                  k.maKhoa,
                  k.tenKhoa,
                  k.diaChi,
-                 k.moTa,
-                 t.id,
-                 t.tenTruong
+                 k.moTa
              )
              FROM Khoa k
-             JOIN k.truong t
              WHERE LOWER(k.tenKhoa) LIKE LOWER(CONCAT('%', :keyword , '%'))
             """)
     List<KhoaAdminResponseDTO> findByNameKhoaDTO(@Param("keyword") String keyword);

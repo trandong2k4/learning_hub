@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Getter
@@ -18,5 +19,7 @@ public class ThanhToanHocPhiStudentRequest {
     private String phuongThucThanhToan;
 
     @NotBlank
-    private String idempotencyKey;
+    private String fileChungTu;
+
+    private LocalDate ngayThanhToan;
 }

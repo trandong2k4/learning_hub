@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
 
 @Service
@@ -40,8 +41,8 @@ public class DashboardStudentService {
     private final HocPhiStudentService hocPhiStudentService;
 
     public DashboardStudentResponse getDashboard() {
-        UUID hocVienId = SecurityUtils.getCurrentHocVienId();
-        log.debug("Bat dau tai dashboard cho hocVienId={}", hocVienId);
+        UUID userId = SecurityUtils.getCurrentUserId();
+        log.debug("Bat dau tai dashboard cho userId={}", userId);
 
         SecurityContext securityContext = SecurityContextHolder.getContext();
         log.debug("Da tim thay hoc vien, bat dau goi song song du lieu dashboard");
@@ -57,15 +58,21 @@ public class DashboardStudentService {
         CompletableFuture<HocPhiTongQuanStudentResponse> hocPhiFuture = CompletableFuture.supplyAsync(
                 withSecurityContext(hocPhiStudentService::getTongQuanHocPhi, securityContext));
 
-        CompletableFuture.allOf(
-                profileFuture,
-                lichHomNayFuture,
-                tienDoHocTapFuture,
-                thongBaoFuture,
-                hocPhiFuture
-        ).join();
+        try {
+            CompletableFuture.allOf(
+                    profileFuture,
+                    lichHomNayFuture,
+                    tienDoHocTapFuture,
+                    thongBaoFuture,
+                    hocPhiFuture
+            ).join();
+        } catch (CompletionException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof RuntimeException re) throw re;
+            throw new RuntimeException("Loi khong xac dinh khi tai dashboard", cause);
+        }
 
-        log.debug("Da tai xong du lieu dashboard cho hocVienId={}", hocVienId);
+        log.debug("Da tai xong du lieu dashboard cho userId={}", userId);
 
         return DashboardStudentResponse.builder()
                 .thongTinCaNhan(toProfileSummary(profileFuture.join()))

@@ -1,6 +1,8 @@
 package com.university.mapper.student;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Component;
 import com.university.dto.response.student.*;
@@ -8,6 +10,7 @@ import com.university.entity.Answers;
 import com.university.entity.Questions;
 import com.university.entity.Quiz;
 import com.university.entity.QuizAttempt;
+import com.university.entity.QuizQuestions;
 import com.university.enums.QuizStatusEnum;
 
 
@@ -18,6 +21,10 @@ public class QuizStudentMapper {
     // 👉 Dùng cho API: GET /quiz
     // 👉 Chỉ lấy thông tin cơ bản (KHÔNG lấy question)
     public QuizListStudentResponse toQuizListDTO(Quiz quiz, QuizStatusEnum status) {
+        return toQuizListDTO(quiz, status, null);
+    }
+
+    public QuizListStudentResponse toQuizListDTO(Quiz quiz, QuizStatusEnum status, QuizAttempt attempt) {
         if (quiz == null)
             return null;
 
@@ -29,6 +36,9 @@ public class QuizStudentMapper {
         dto.setThoiGianKetThuc(quiz.getThoiGianKetThuc());
         dto.setThoiGianLam(quiz.getThoiGianLam());
         dto.setStatus(status);
+        if (attempt != null && Boolean.TRUE.equals(attempt.getStatus())) {
+            dto.setScore(attempt.getScore());
+        }
 
         // ⚠ GỢI Ý:
         // Có thể thêm:
@@ -107,16 +117,9 @@ public class QuizStudentMapper {
         dto.setThoiGianLam(quiz.getThoiGianLam());
         dto.setRemainingTime(remainingTime);
 
-        if (quiz.getDQuizExercises() != null) {
-    dto.setQuestions(
-        quiz.getDQuizExercises()
-            .stream()
-            .filter(qe -> qe.getExercise() != null)
-            .flatMap(qe -> qe.getExercise().getDQuestions().stream()) // ✅ FIX CHÍNH
-            .map(this::toQuestionDTO)
-            .toList()
-    );
-}
+        dto.setQuestions(getQuestions(quiz).stream()
+                .map(this::toQuestionDTO)
+                .toList());
         // ⚠ GỢI Ý:
         // Có thể shuffle câu hỏi:
         // Collections.shuffle(dto.getQuestions());
@@ -158,5 +161,26 @@ public class QuizStudentMapper {
         dto.setCorrect(correct);
         dto.setTotal(total);
         return dto;
+    }
+
+    private List<Questions> getQuestions(Quiz quiz) {
+        Map<java.util.UUID, Questions> questions = new LinkedHashMap<>();
+
+        if (quiz.getDQuizQuestions() != null) {
+            quiz.getDQuizQuestions().stream()
+                    .map(QuizQuestions::getQuestions)
+                    .filter(q -> q != null && q.getId() != null)
+                    .forEach(q -> questions.putIfAbsent(q.getId(), q));
+        }
+
+        if (quiz.getDQuizExercises() != null) {
+            quiz.getDQuizExercises().stream()
+                    .filter(qe -> qe.getExercise() != null && qe.getExercise().getDQuestions() != null)
+                    .flatMap(qe -> qe.getExercise().getDQuestions().stream())
+                    .filter(q -> q != null && q.getId() != null)
+                    .forEach(q -> questions.putIfAbsent(q.getId(), q));
+        }
+
+        return List.copyOf(questions.values());
     }
 }

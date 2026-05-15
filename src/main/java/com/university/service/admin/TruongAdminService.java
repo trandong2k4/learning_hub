@@ -7,16 +7,15 @@ import com.university.dto.response.admin.TruongAdminResponseDTO;
 import com.university.entity.Truong;
 import com.university.exception.SimpleMessageException;
 import com.university.mapper.admin.TruongAdminMapper;
+// import com.university.repository.admin.KhoaAdminRepository;
 import com.university.repository.admin.TruongAdminRepository;
 import com.university.service.admin.excel.TruongExcelListener;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -24,8 +23,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TruongAdminService {
 
-    @Autowired
     private final TruongAdminRepository truongAdminRepository;
+    // private final KhoaAdminRepository khoaAdminRepository;
     private final TruongAdminMapper truongMapper;
 
     public ExcelImportResult importFromExcel(MultipartFile file) throws java.io.IOException {
@@ -63,10 +62,18 @@ public class TruongAdminService {
         return truongMapper.toResponseDTO(truong);
     }
 
-    public void delete(UUID id) {
+    private void checkCanDelete(UUID id) {
         if (!truongAdminRepository.existsById(id)) {
             throw new SimpleMessageException("Trường không tồn tại");
         }
+        // if (khoaAdminRepository.existsByTruongId(id)) {
+        // throw new SimpleMessageException("Trường đang có khoa liên kết, không thể
+        // xóa");
+        // }
+    }
+
+    public void delete(UUID id) {
+        checkCanDelete(id);
         truongAdminRepository.deleteById(id);
     }
 
@@ -75,15 +82,11 @@ public class TruongAdminService {
         if (ids == null || ids.isEmpty()) {
             return;
         }
+        for (UUID id : ids) {
+            checkCanDelete(id);
+        }
         try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
-
-            // }
-            // }
             truongAdminRepository.deleteAllByIdIn(ids);
-
         } catch (Exception e) {
             throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
         }

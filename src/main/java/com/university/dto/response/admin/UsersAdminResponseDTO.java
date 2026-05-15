@@ -26,34 +26,22 @@ public class UsersAdminResponseDTO {
     private String soDienThoai;
     private Boolean trangThai;
     private String ghiChu;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+    @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")
     private LocalDateTime createAt;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+    @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")
     private LocalDateTime updateAt;
 
     public interface UserView {
         UUID getId();
-
         String getUserName();
-
-        String getPassWord();
-
         String getEmail();
-
         String getCccd();
-
         String getHoTen();
-
         String getDiaChi();
-
         String getGioiTinh();
-
         String getNgaySinh();
-
         String getSoDienThoai();
-
         Boolean getTrangThai();
-
         String getGhiChu();
     }
 }

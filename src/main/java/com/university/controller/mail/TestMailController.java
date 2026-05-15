@@ -1,4 +1,4 @@
-package com.university.controller.admin;
+package com.university.controller.mail;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;

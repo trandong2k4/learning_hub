@@ -1,21 +1,22 @@
 package com.university.service.admin;
 
-import com.university.dto.request.admin.BaiVietAdminRequestDTO;
-import com.university.dto.response.admin.BaiVietAdminResponseDTO;
-import com.university.entity.BaiViet;
-import com.university.entity.Users;
+import com.university.dto.request.admin.LopHocPhanAdminRequestDTO;
+import com.university.dto.response.admin.LopHocPhanAdminResponseDTO;
+import com.university.entity.HocKi;
+import com.university.entity.LopHocPhan;
+import com.university.entity.MonHoc;
+import com.university.enums.TrangThaiLHP;
 import com.university.exception.SimpleMessageException;
-import com.university.mapper.admin.BaiVietAdminMapper;
-import com.university.repository.admin.BaiVietAdminRepository;
+import com.university.mapper.admin.LopHocPhanAdminMapper;
+import com.university.repository.admin.HocKiAdminRepository;
 import com.university.repository.admin.LopHocPhanAdminRepository;
-import com.university.repository.admin.UsersAdminRepository;
+import com.university.repository.admin.MonHocAdminRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,74 +25,148 @@ import java.util.UUID;
 public class LopHocPhanAdminService {
 
     private final LopHocPhanAdminRepository lopHocPhanAdminRepository;
-    private final BaiVietAdminRepository baiVietRepository;
-    private final UsersAdminRepository usersRepository;
-    private final BaiVietAdminMapper baiVietMapper;
+    private final HocKiAdminRepository hocKiAdminRepository;
+    private final MonHocAdminRepository monHocAdminRepository;
+    private final LopHocPhanAdminMapper lopHocPhanAdminMapper;
 
     @Transactional
-    public BaiVietAdminResponseDTO createBaiViet(BaiVietAdminRequestDTO request) {
-        Users user = usersRepository.findById(request.getUsersId())
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
+    public LopHocPhanAdminResponseDTO create(LopHocPhanAdminRequestDTO request) {
+        normalizeRequest(request);
 
-        BaiViet baiViet = baiVietMapper.toEntity(request);
-        baiViet.setUsers(user);
-        baiViet.setCreatedAt(LocalDateTime.now());
-        baiViet.setUpdatedAt(LocalDateTime.now());
-
-        BaiViet saved = baiVietRepository.save(baiViet);
-        return baiVietMapper.toResponseDTO(saved);
-    }
-
-    @Transactional
-    public BaiVietAdminResponseDTO updateBaiViet(UUID id, BaiVietAdminRequestDTO request) {
-        BaiViet existing = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
-
-        Users user = usersRepository.findById(request.getUsersId())
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
-
-        baiVietMapper.updateEntity(existing, request);
-        existing.setUsers(user);
-        existing.setUpdatedAt(LocalDateTime.now());
-
-        BaiViet updated = baiVietRepository.save(existing);
-        return baiVietMapper.toResponseDTO(updated);
-    }
-
-    public BaiVietAdminResponseDTO getBaiVietById(UUID id) {
-        BaiViet baiViet = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
-        return baiVietMapper.toResponseDTO(baiViet);
-    }
-
-    public List<BaiVietAdminResponseDTO.BaiVietView> getALlBaiViet() {
-        return baiVietRepository.findAllBaiVietView();
-    }
-
-    @Transactional
-    public void deleteBaiViet(UUID id) {
-        BaiViet bv = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
-
-        baiVietRepository.delete(bv);
-    }
-
-    @Transactional
-    public void deleteAllByList(List<UUID> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return;
+        if (lopHocPhanAdminRepository.existsByMaLopHocPhan(request.getMaLopHocPhan())) {
+            throw new SimpleMessageException("Mã lớp học phần đã tồn tại");
         }
-        try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
 
-            // }
-            // }
-            lopHocPhanAdminRepository.deleteAllByIdIn(ids);
+        HocKi hocKi = hocKiAdminRepository.findById(request.getHocKiId())
+                .orElseThrow(() -> new EntityNotFoundException("Học kì không tồn tại"));
+        MonHoc monHoc = monHocAdminRepository.findById(request.getMonHocId())
+                .orElseThrow(() -> new EntityNotFoundException("Môn học không tồn tại"));
 
-        } catch (Exception e) {
-            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        LopHocPhan lopHocPhan = lopHocPhanAdminMapper.toEntity(request);
+        lopHocPhan.setHocKi(hocKi);
+        lopHocPhan.setMonHoc(monHoc);
+
+        LopHocPhan saved = lopHocPhanAdminRepository.save(lopHocPhan);
+        return lopHocPhanAdminRepository.findDTOById(saved.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lớp học phần sau khi tạo"));
+    }
+
+    public LopHocPhanAdminResponseDTO getById(UUID id) {
+        return lopHocPhanAdminRepository.findDTOById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Lớp học phần không tồn tại"));
+    }
+
+    public List<LopHocPhanAdminResponseDTO> getAll() {
+        return lopHocPhanAdminRepository.findAllDTO();
+    }
+
+    public List<LopHocPhanAdminResponseDTO> getAllByHocKi(UUID hocKiId) {
+        if (!hocKiAdminRepository.existsById(hocKiId)) {
+            throw new EntityNotFoundException("Học kì không tồn tại");
+        }
+        return lopHocPhanAdminRepository.findAllByHocKiIdDTO(hocKiId);
+    }
+
+    public List<LopHocPhanAdminResponseDTO> getAllByMonHoc(UUID monHocId) {
+        if (!monHocAdminRepository.existsById(monHocId)) {
+            throw new EntityNotFoundException("Môn học không tồn tại");
+        }
+        return lopHocPhanAdminRepository.findAllByMonHocIdDTO(monHocId);
+    }
+
+    @Transactional
+    public LopHocPhanAdminResponseDTO update(UUID id, LopHocPhanAdminRequestDTO request) {
+        normalizeRequest(request);
+
+        LopHocPhan existing = lopHocPhanAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Lớp học phần không tồn tại"));
+
+        if (lopHocPhanAdminRepository.existsByMaLopHocPhanAndIdNot(request.getMaLopHocPhan(), id)) {
+            throw new SimpleMessageException("Mã lớp học phần đã tồn tại");
+        }
+
+        long soLuongDaDangKy = lopHocPhanAdminRepository.countDangKyByLopHocPhanId(id);
+        if (request.getSoLuongToiDa() < soLuongDaDangKy) {
+            throw new SimpleMessageException("Số lượng tối đa không được nhỏ hơn số lượng đã đăng ký");
+        }
+
+        HocKi hocKi = hocKiAdminRepository.findById(request.getHocKiId())
+                .orElseThrow(() -> new EntityNotFoundException("Học kì không tồn tại"));
+        MonHoc monHoc = monHocAdminRepository.findById(request.getMonHocId())
+                .orElseThrow(() -> new EntityNotFoundException("Môn học không tồn tại"));
+
+        lopHocPhanAdminMapper.updateEntity(existing, request);
+        existing.setHocKi(hocKi);
+        existing.setMonHoc(monHoc);
+
+        LopHocPhan updated = lopHocPhanAdminRepository.save(existing);
+        return lopHocPhanAdminRepository.findDTOById(updated.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy lớp học phần sau khi cập nhật"));
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        LopHocPhan lopHocPhan = lopHocPhanAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Lớp học phần không tồn tại"));
+
+        if (lopHocPhanAdminRepository.countDangKyByLopHocPhanId(id) > 0) {
+            throw new SimpleMessageException("Không thể xóa lớp học phần đã có đăng ký tín chỉ");
+        }
+
+        lopHocPhanAdminRepository.delete(lopHocPhan);
+    }
+
+    @Transactional
+    public List<String> deleteAllByList(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+
+        List<UUID> deletable = new java.util.ArrayList<>();
+        List<String> cannotDelete = new java.util.ArrayList<>();
+
+        for (UUID id : ids) {
+            if (lopHocPhanAdminRepository.countDangKyByLopHocPhanId(id) > 0) {
+                String maLHP = "Unknown";
+                try {
+                    maLHP = lopHocPhanAdminRepository.findById(id)
+                            .map(LopHocPhan::getMaLopHocPhan)
+                            .orElse("Unknown");
+                } catch (Exception ignored) {}
+                cannotDelete.add(maLHP);
+            } else {
+                deletable.add(id);
+            }
+        }
+
+        if (!deletable.isEmpty()) {
+            try {
+                lopHocPhanAdminRepository.deleteAllByIdIn(deletable);
+            } catch (Exception e) {
+                throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+            }
+        }
+
+        return cannotDelete;
+    }
+
+    private void normalizeRequest(LopHocPhanAdminRequestDTO request) {
+        if (request == null) {
+            throw new SimpleMessageException("Thông tin lớp học phần không được để trống");
+        }
+
+        request.setMaLopHocPhan(request.getMaLopHocPhan().trim().toUpperCase());
+
+        if (request.getMaLopHocPhan().length() > 10) {
+            throw new SimpleMessageException("Mã lớp học phần tối đa 10 ký tự");
+        }
+
+        if (request.getHanHuy().isBefore(request.getHanDangKy())) {
+            throw new SimpleMessageException("Hạn hủy không được trước hạn đăng ký");
+        }
+
+        if (request.getTrangThai() == null) {
+            request.setTrangThai(TrangThaiLHP.MO_DANG_KY);
         }
     }
 }

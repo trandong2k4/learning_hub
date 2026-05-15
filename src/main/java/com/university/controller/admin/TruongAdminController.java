@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.university.annotation.RequirePermission;
 import com.university.dto.request.admin.TruongAdminRequestDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.TruongAdminResponseDTO;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/truong")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_SCHOOL_VIEW")
 public class TruongAdminController {
 
     private final TruongAdminService truongService;

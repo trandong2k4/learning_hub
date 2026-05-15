@@ -1,21 +1,17 @@
 package com.university.service.admin;
 
-import com.university.dto.request.admin.BaiVietAdminRequestDTO;
-import com.university.dto.response.admin.BaiVietAdminResponseDTO;
-import com.university.entity.BaiViet;
-import com.university.entity.Users;
-import com.university.exception.SimpleMessageException;
-import com.university.mapper.admin.BaiVietAdminMapper;
-import com.university.repository.admin.BaiVietAdminRepository;
+import com.university.dto.request.admin.MonHocTienQuyetAdminRequestDTO;
+import com.university.dto.response.admin.MonHocTienQuyetAdminResponseDTO;
+import com.university.entity.MonHoc;
+import com.university.entity.MonHocTienQuyet;
+import com.university.mapper.admin.MonHocTienQuyetAdminMapper;
+import com.university.repository.admin.MonHocAdminRepository;
 import com.university.repository.admin.MonHocTienQuyetAdminRepository;
-import com.university.repository.admin.UsersAdminRepository;
-
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,74 +20,116 @@ import java.util.UUID;
 public class MonHocTienQuyetAdminService {
 
     private final MonHocTienQuyetAdminRepository monHocTienQuyetAdminRepository;
-    private final BaiVietAdminRepository baiVietRepository;
-    private final UsersAdminRepository usersRepository;
-    private final BaiVietAdminMapper baiVietMapper;
+    private final MonHocAdminRepository monHocAdminRepository;
+    private final MonHocTienQuyetAdminMapper monHocTienQuyetMapper;
 
     @Transactional
-    public BaiVietAdminResponseDTO createBaiViet(BaiVietAdminRequestDTO request) {
-        Users user = usersRepository.findById(request.getUsersId())
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
+    public MonHocTienQuyetAdminResponseDTO create(MonHocTienQuyetAdminRequestDTO request) {
+        UUID monHocId = request.getMonHocId();
+        UUID monTienQuyetId = request.getMonTienQuyetId();
 
-        BaiViet baiViet = baiVietMapper.toEntity(request);
-        baiViet.setUsers(user);
-        baiViet.setCreatedAt(LocalDateTime.now());
-        baiViet.setUpdatedAt(LocalDateTime.now());
+        if (monHocId.equals(monTienQuyetId)) {
+            throw new IllegalArgumentException("Môn học không thể là tiên quyết của chính nó");
+        }
 
-        BaiViet saved = baiVietRepository.save(baiViet);
-        return baiVietMapper.toResponseDTO(saved);
-    }
+        MonHoc monHoc = monHocAdminRepository.findById(monHocId)
+                .orElseThrow(() -> new EntityNotFoundException("Môn học chính không tồn tại"));
 
-    @Transactional
-    public BaiVietAdminResponseDTO updateBaiViet(UUID id, BaiVietAdminRequestDTO request) {
-        BaiViet existing = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
+        MonHoc monTienQuyet = monHocAdminRepository.findById(monTienQuyetId)
+                .orElseThrow(() -> new EntityNotFoundException("Môn tiên quyết không tồn tại"));
 
-        Users user = usersRepository.findById(request.getUsersId())
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
+        if (monHocTienQuyetAdminRepository.existsByMonHocIdAndMonTienQuyetId(monHocId, monTienQuyetId)) {
+            throw new IllegalStateException(
+                    "'" + monTienQuyet.getMaMonHoc() + "' đã là môn tiên quyết của '" + monHoc.getMaMonHoc() + "'");
+        }
 
-        baiVietMapper.updateEntity(existing, request);
-        existing.setUsers(user);
-        existing.setUpdatedAt(LocalDateTime.now());
+        // Kiểm tra vòng tròn trực tiếp: A→B không hợp lệ nếu B→A đã tồn tại
+        if (monHocTienQuyetAdminRepository.existsByMonHocIdAndMonTienQuyetId(monTienQuyetId, monHocId)) {
+            throw new IllegalStateException(
+                    "Xung đột vòng tròn: '" + monHoc.getMaMonHoc() + "' đã là tiên quyết của '"
+                            + monTienQuyet.getMaMonHoc() + "'");
+        }
 
-        BaiViet updated = baiVietRepository.save(existing);
-        return baiVietMapper.toResponseDTO(updated);
-    }
+        MonHocTienQuyet entity = new MonHocTienQuyet();
+        entity.setMonHoc(monHoc);
+        entity.setMonTienQuyet(monTienQuyet);
+        entity.setMaMonHoc(monHoc.getMaMonHoc());
 
-    public BaiVietAdminResponseDTO getBaiVietById(UUID id) {
-        BaiViet baiViet = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
-        return baiVietMapper.toResponseDTO(baiViet);
-    }
-
-    public List<BaiVietAdminResponseDTO.BaiVietView> getALlBaiViet() {
-        return baiVietRepository.findAllBaiVietView();
+        return monHocTienQuyetMapper.toResponseDTO(monHocTienQuyetAdminRepository.save(entity));
     }
 
     @Transactional
-    public void deleteBaiViet(UUID id) {
-        BaiViet bv = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
+    public MonHocTienQuyetAdminResponseDTO update(UUID id, MonHocTienQuyetAdminRequestDTO request) {
+        MonHocTienQuyet existing = monHocTienQuyetAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Bản ghi tiên quyết không tồn tại"));
 
-        baiVietRepository.delete(bv);
+        UUID monHocId = request.getMonHocId();
+        UUID monTienQuyetId = request.getMonTienQuyetId();
+
+        if (monHocId.equals(monTienQuyetId)) {
+            throw new IllegalArgumentException("Môn học không thể là tiên quyết của chính nó");
+        }
+
+        MonHoc monHoc = monHocAdminRepository.findById(monHocId)
+                .orElseThrow(() -> new EntityNotFoundException("Môn học chính không tồn tại"));
+
+        MonHoc monTienQuyet = monHocAdminRepository.findById(monTienQuyetId)
+                .orElseThrow(() -> new EntityNotFoundException("Môn tiên quyết không tồn tại"));
+
+        // Kiểm tra duplicate, bỏ qua bản ghi đang cập nhật
+        if (monHocTienQuyetAdminRepository.existsByMonHocIdAndMonTienQuyetIdAndIdNot(monHocId, monTienQuyetId, id)) {
+            throw new IllegalStateException(
+                    "'" + monTienQuyet.getMaMonHoc() + "' đã là môn tiên quyết của '" + monHoc.getMaMonHoc() + "'");
+        }
+
+        // Kiểm tra vòng tròn trực tiếp
+        if (monHocTienQuyetAdminRepository.existsByMonHocIdAndMonTienQuyetId(monTienQuyetId, monHocId)) {
+            throw new IllegalStateException(
+                    "Xung đột vòng tròn: '" + monHoc.getMaMonHoc() + "' đã là tiên quyết của '"
+                            + monTienQuyet.getMaMonHoc() + "'");
+        }
+
+        existing.setMonHoc(monHoc);
+        existing.setMonTienQuyet(monTienQuyet);
+        existing.setMaMonHoc(monHoc.getMaMonHoc());
+
+        return monHocTienQuyetMapper.toResponseDTO(monHocTienQuyetAdminRepository.save(existing));
+    }
+
+    public MonHocTienQuyetAdminResponseDTO getById(UUID id) {
+        MonHocTienQuyet entity = monHocTienQuyetAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Bản ghi tiên quyết không tồn tại"));
+        return monHocTienQuyetMapper.toResponseDTO(entity);
+    }
+
+    public List<MonHocTienQuyetAdminResponseDTO> getAll() {
+        return monHocTienQuyetAdminRepository.findAll()
+                .stream()
+                .map(monHocTienQuyetMapper::toResponseDTO)
+                .toList();
+    }
+
+    public List<MonHocTienQuyetAdminResponseDTO> getByMonHocId(UUID monHocId) {
+        if (!monHocAdminRepository.existsById(monHocId)) {
+            throw new EntityNotFoundException("Môn học không tồn tại");
+        }
+        return monHocTienQuyetAdminRepository.findAllByMonHocId(monHocId)
+                .stream()
+                .map(monHocTienQuyetMapper::toResponseDTO)
+                .toList();
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        if (!monHocTienQuyetAdminRepository.existsById(id)) {
+            throw new EntityNotFoundException("Bản ghi tiên quyết không tồn tại");
+        }
+        monHocTienQuyetAdminRepository.deleteById(id);
     }
 
     @Transactional
     public void deleteAllByList(List<UUID> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return;
-        }
-        try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
-
-            // }
-            // }
-            monHocTienQuyetAdminRepository.deleteAllByIdIn(ids);
-
-        } catch (Exception e) {
-            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
-        }
+        if (ids == null || ids.isEmpty()) return;
+        monHocTienQuyetAdminRepository.deleteAllByIdIn(ids);
     }
 }

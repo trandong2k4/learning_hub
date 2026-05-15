@@ -16,4 +16,6 @@ public class MonHocTienQuyetAdminRequestDTO {
     private String maMonHoc;
     @NotNull(message = "Id môn học không được để trống")
     private UUID monHocId;
+    @NotNull(message = "Id môn tiên quyết không được để trống")
+    private UUID monTienQuyetId;
 }

@@ -1,8 +1,9 @@
 package com.university.controller.admin;
 
-import com.university.dto.request.admin.BaiVietAdminRequestDTO;
-import com.university.dto.response.admin.BaiVietAdminResponseDTO;
-import com.university.service.admin.BaiVietAdminService;
+import com.university.annotation.RequirePermission;
+import com.university.dto.request.admin.HocKiAdminRequestDTO;
+import com.university.dto.response.admin.HocKiAdminResponseDTO;
+import com.university.service.admin.HocKiAdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,39 +16,40 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/hoc-ki")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_SCHEDULE_MANAGE_VIEW")
 public class HocKiAdminController {
 
-    private final BaiVietAdminService baiVietService;
+    private final HocKiAdminService hocKiService;
 
     @PostMapping
-    public ResponseEntity<BaiVietAdminResponseDTO> createBaiViet(
-            @Valid @RequestBody BaiVietAdminRequestDTO request) {
-        BaiVietAdminResponseDTO response = baiVietService.createBaiViet(request);
+    public ResponseEntity<HocKiAdminResponseDTO> create(
+            @Valid @RequestBody HocKiAdminRequestDTO request) {
+        HocKiAdminResponseDTO response = hocKiService.createHocKi(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<BaiVietAdminResponseDTO> updateBaiViet(
+    public ResponseEntity<HocKiAdminResponseDTO> update(
             @PathVariable UUID id,
-            @Valid @RequestBody BaiVietAdminRequestDTO request) {
-        BaiVietAdminResponseDTO response = baiVietService.updateBaiViet(id, request);
+            @Valid @RequestBody HocKiAdminRequestDTO request) {
+        HocKiAdminResponseDTO response = hocKiService.updateHocKi(id, request);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaiVietAdminResponseDTO> getBaiViet(@PathVariable UUID id) {
-        BaiVietAdminResponseDTO response = baiVietService.getBaiVietById(id);
+    public ResponseEntity<HocKiAdminResponseDTO> get(@PathVariable UUID id) {
+        HocKiAdminResponseDTO response = hocKiService.getHocKiById(id);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping
-    public ResponseEntity<List<BaiVietAdminResponseDTO.BaiVietView>> getAllBaiViet() {
-        return ResponseEntity.ok(baiVietService.getALlBaiViet());
+    public ResponseEntity<List<HocKiAdminResponseDTO.HocKiView>> getAllHocKi() {
+        return ResponseEntity.ok(hocKiService.getAllHocKi());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBaiViet(@PathVariable UUID id) {
-        baiVietService.deleteBaiViet(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        hocKiService.deleteHocKi(id);
         return ResponseEntity.noContent().build();
     }
 }

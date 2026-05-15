@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.university.annotation.RequirePermission;
 import com.university.dto.request.admin.MonHocAdminRequestDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.MonHocAdminResponseDTO;
@@ -19,6 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/mon-hoc")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_SUBJECT_VIEW")
 public class MonHocAdminController {
 
     private final MonHocAdminService monHocAdminService;

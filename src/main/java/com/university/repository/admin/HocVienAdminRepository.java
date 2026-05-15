@@ -33,4 +33,44 @@ public interface HocVienAdminRepository extends JpaRepository<HocVien, UUID> {
     List<Object[]> countByNamNhapHocRaw();
 
     void deleteAllByIdIn(List<UUID> ids);
+
+    boolean existsByUsersId(UUID usersId);
+
+    List<HocVien> findAllByNganhId(UUID nganhId);
+
+    @Query("SELECT hv.maHocVien FROM HocVien hv")
+    List<String> findAllMaHocVien();
+
+    boolean existsByMaHocVien(String maHocVien);
+
+    boolean existsByMaHocVienAndIdNot(String maHocVien, UUID id);
+
+    @Query("SELECT hv.users.id FROM HocVien hv WHERE hv.users IS NOT NULL")
+    List<UUID> findAllUsersId();
+
+    @Query("""
+            SELECT new com.university.dto.response.admin.HocVienAdminResponseDTO(
+                hv.id,
+                hv.maHocVien,
+                hv.ngayNhapHoc,
+                hv.ngayTotNghiep,
+                n.id as nganhId,
+                n.tenNganh,
+                u.hoTen as tenNhanVien,
+                u.userName,
+                u.email,
+                u.cccd,
+                u.diaChi,
+                u.soDienThoai,
+                u.gioiTinh,
+                u.ngaySinh,
+                u.id as usersId,
+                u.trangThai,
+                u.ghiChu
+            )
+            FROM HocVien hv
+            JOIN hv.users u
+            JOIN hv.nganh n
+            """)
+    List<HocVienAdminResponseDTO> findAllWithDetails();
 }

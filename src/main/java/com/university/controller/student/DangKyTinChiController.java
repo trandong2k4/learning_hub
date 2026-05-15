@@ -18,10 +18,12 @@ import com.university.service.student.DangKyTinChiService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.university.annotation.RequirePermission;
 
 @RestController
 @RequestMapping("/api/student/dang-ky-tin-chi")
 @RequiredArgsConstructor
+@RequirePermission("STU_CREDIT_REG_VIEW")
 public class DangKyTinChiController {
 
     private final DangKyTinChiService dangKyTinChiService;

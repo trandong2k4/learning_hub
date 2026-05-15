@@ -1,6 +1,5 @@
 package com.university.service.student;
 
-import com.university.config.SecurityUtils;
 import com.university.dto.request.student.TienDoHocTapStudentRequestDTO;
 import com.university.dto.response.student.TienDoHocTapHocKyStudentResponse;
 import com.university.dto.response.student.TienDoHocTapMonHocStudentResponse;
@@ -12,11 +11,8 @@ import com.university.entity.DangKyTinChi;
 import com.university.entity.DiemThanhPhan;
 import com.university.entity.HocVien;
 import com.university.entity.MonHoc;
-import com.university.exception.ResourceNotFoundException;
-import com.university.repository.student.HocVienStudentsRepository;
 import com.university.repository.student.TienDoHocTapStudentRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,17 +29,12 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-@PreAuthorize("hasRole('STUDENT')")
 public class TienDoHocTapStudentService {
 
-    private static final double PASSING_SCORE = 4.0d;
+    private static final double PASSING_SCORE = 5.0d;
 
-    private final HocVienStudentsRepository hocVienStudentsRepository;
     private final TienDoHocTapStudentRepository tienDoHocTapStudentRepository;
-
-    public TienDoHocTapStudentResponse getTienDoHocTap() {
-        return getTienDoHocTap(new TienDoHocTapStudentRequestDTO());
-    }
+    private final CurrentHocVienService currentHocVienService;
 
     public TienDoHocTapStudentResponse getTienDoHocTap(TienDoHocTapStudentRequestDTO request) {
         TienDoHocTapStudentRequestDTO safeRequest = request == null
@@ -98,9 +89,8 @@ public class TienDoHocTapStudentService {
     }
 
     private LearningProgressData loadLearningProgressData() {
-        UUID hocVienId = SecurityUtils.getCurrentHocVienId();
-        HocVien hocVien = hocVienStudentsRepository.findByIdWithNganh(hocVienId)
-                .orElseThrow(() -> new ResourceNotFoundException("Khong tim thay hoc vien"));
+        HocVien hocVien = currentHocVienService.getCurrentHocVienWithNganh();
+        UUID hocVienId = hocVien.getId();
 
         List<ChuongTrinhDaoTao> curriculum = tienDoHocTapStudentRepository
                 .findCurriculumByNganhId(hocVien.getNganh().getId());
@@ -312,6 +302,7 @@ public class TienDoHocTapStudentService {
         var hocKi = lopHocPhan.getHocKi();
         Double finalScore = calculateFinalScore(diemThanhPhans);
         boolean daHoanThanh = finalScore != null;
+        @SuppressWarnings("null")
         boolean daDat = daHoanThanh && finalScore >= PASSING_SCORE;
 
         return new TienDoMonSnapshot(
@@ -375,7 +366,7 @@ public class TienDoHocTapStudentService {
             double parsed = Double.parseDouble(normalized);
             return parsed > 1d ? parsed / 100d : parsed;
         } catch (NumberFormatException ex) {
-            throw new IllegalStateException("Du lieu diem khong hop le: ti trong cot diem khong dung");
+            return 0d;
         }
     }
 

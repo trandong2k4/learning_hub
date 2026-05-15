@@ -41,6 +41,9 @@ public class Exercise {
 
     private String moTa;
 
+    @Column
+    private Integer gioiHanLanLam;
+
     private LocalDateTime thoiGianBatDau;
 
     private LocalDateTime thoiGianKetThuc;
@@ -64,4 +67,6 @@ public class Exercise {
 
     @OneToMany(mappedBy = "exercise", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Questions> dQuestions = new ArrayList<>();
+
+    private String fileExerciseUrl;
 }

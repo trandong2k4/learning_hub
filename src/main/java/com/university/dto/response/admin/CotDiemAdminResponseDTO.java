@@ -15,6 +15,8 @@ public class CotDiemAdminResponseDTO {
     private String tiTrong;
     private CotDiemEnum loai;
     private Integer thuTuHienThi;
+    private UUID lopHocPhanId;
+    private String maLopHocPhan;
 
     public interface CotDiemView {
 
@@ -27,6 +29,14 @@ public class CotDiemAdminResponseDTO {
         CotDiemEnum getLoai();
 
         Integer getThuTuHienThi();
+
+        LopHocPhanInfo getLopHocPhan();
+
+        interface LopHocPhanInfo {
+            UUID getId();
+
+            String getMaLopHocPhan();
+        }
     }
 
 }

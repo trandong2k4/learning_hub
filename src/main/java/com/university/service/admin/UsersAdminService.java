@@ -2,78 +2,131 @@ package com.university.service.admin;
 
 import com.alibaba.excel.EasyExcel;
 import com.university.dto.request.admin.UsersAdminRequestDTO;
+import com.university.dto.response.admin.BatchDeleteResultDTO;
+import com.university.dto.response.admin.BatchDeleteResultDTO.FailedUserDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.UsersAdminResponseDTO;
 import com.university.dto.response.admin.UsersAdminResponseDTO.UserView;
+import com.university.dto.response.auth.AuthResponseDTO;
+import com.university.entity.Role;
+import com.university.entity.UserRole;
 import com.university.entity.Users;
-import com.university.exception.SimpleMessageException;
 import com.university.mapper.admin.UsersAdminMapper;
+import com.university.repository.admin.HocVienAdminRepository;
+import com.university.repository.admin.NhanVienAdminRepository;
+import com.university.repository.admin.RoleAdminRepository;
+import com.university.repository.admin.UserRoleAdminRepository;
 import com.university.repository.admin.UsersAdminRepository;
 import com.university.service.admin.excel.UsersExcelListener;
-import com.university.service.auth.CustomUserDetailsService;
-
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
-public class UsersAdminService implements CustomUserDetailsService {
+public class UsersAdminService {
 
     private final UsersAdminRepository usersAdminRepository;
     private final UsersAdminMapper usersMapper;
-    private final Set<String> userNameInDb;
+    private final HocVienAdminRepository hocVienAdminRepository;
+    private final NhanVienAdminRepository nhanVienAdminRepository;
+    private final RoleAdminRepository roleAdminRepository;
+    private final UserRoleAdminRepository userRoleAdminRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsersAdminService(UsersAdminRepository usersRepository, UsersAdminMapper usersMapper,
-            Set<String> userNameInDb) {
+    public UsersAdminService(
+            UsersAdminRepository usersRepository,
+            UsersAdminMapper usersMapper,
+            HocVienAdminRepository hocVienAdminRepository,
+            NhanVienAdminRepository nhanVienAdminRepository,
+            RoleAdminRepository roleAdminRepository,
+            UserRoleAdminRepository userRoleAdminRepository,
+            PasswordEncoder passwordEncoder) {
         this.usersAdminRepository = usersRepository;
         this.usersMapper = usersMapper;
-        this.userNameInDb = userNameInDb;
+        this.hocVienAdminRepository = hocVienAdminRepository;
+        this.nhanVienAdminRepository = nhanVienAdminRepository;
+        this.roleAdminRepository = roleAdminRepository;
+        this.userRoleAdminRepository = userRoleAdminRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    public ExcelImportResult importFromExcel(MultipartFile file) throws java.io.IOException {
-        UsersExcelListener listener = new UsersExcelListener(usersAdminRepository);
+    // ─────────────────────────────────────────────────────────────────────────
+    // Import Excel
+    // ─────────────────────────────────────────────────────────────────────────
 
+    public ExcelImportResult importFromExcel(MultipartFile file) throws java.io.IOException {
+        UsersExcelListener listener = new UsersExcelListener(
+                usersAdminRepository,
+                roleAdminRepository,
+                userRoleAdminRepository,
+                passwordEncoder);
         EasyExcel.read(file.getInputStream(), UsersAdminRequestDTO.class, listener)
                 .sheet("Users")
                 .headRowNumber(1)
                 .doRead();
-
         return listener.getResult();
     }
 
-    public UsersAdminResponseDTO create(UsersAdminRequestDTO dto) {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Create
+    // ─────────────────────────────────────────────────────────────────────────
 
-        userNameInDb.addAll(usersAdminRepository.findAllUserNames());
-        if (userNameInDb.contains(dto.getUserName())) {
-            throw new SimpleMessageException("UserName đã tồn tại");
+    @Transactional
+    public UsersAdminResponseDTO create(UsersAdminRequestDTO dto) {
+        // Validate password (không có @NotBlank trong DTO vì update dùng chung)
+        if (dto.getPassWord() == null || dto.getPassWord().isBlank()) {
+            throw new IllegalArgumentException("Mật khẩu không được để trống");
         }
-        Users users = usersMapper.toEntity(dto);
-        return usersMapper.toResponseDTO(usersAdminRepository.save(users));
+
+        // Kiểm tra trùng lặp — throw 409 Conflict
+        if (usersAdminRepository.existsByUserName(dto.getUserName())) {
+            throw new IllegalStateException("Tên đăng nhập '" + dto.getUserName() + "' đã tồn tại");
+        }
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()
+                && usersAdminRepository.existsByEmail(dto.getEmail())) {
+            throw new IllegalStateException("Email '" + dto.getEmail() + "' đã được sử dụng");
+        }
+        if (usersAdminRepository.existsByCccd(dto.getCccd())) {
+            throw new IllegalStateException("CCCD '" + dto.getCccd() + "' đã được sử dụng");
+        }
+
+        Role role = findRoleByMaRole(dto.getMaRole());
+        Users user = usersMapper.toEntity(dto);
+        Users saved = usersAdminRepository.save(user);
+        if (role != null) {
+            UserRole userRole = new UserRole();
+            userRole.setUsers(saved);
+            userRole.setRole(role);
+            userRoleAdminRepository.save(userRole);
+        }
+
+        return usersMapper.toResponseDTO(saved);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Read
+    // ─────────────────────────────────────────────────────────────────────────
 
     public List<UsersAdminResponseDTO> getAll() {
         return usersAdminRepository.findAllDTO();
     }
 
     public UsersAdminResponseDTO getById(UUID id) {
-        UsersAdminResponseDTO users = usersAdminRepository.findUsersById(id);
-        if (users.equals(null)) {
-            throw new EntityNotFoundException("Users không tồn tại");
+        UsersAdminResponseDTO user = usersAdminRepository.findUsersById(id);
+        if (user == null) {
+            throw new EntityNotFoundException("Người dùng với id '" + id + "' không tồn tại");
         }
-        return users;
+        return user;
     }
 
     public UserView getByView(UUID id) {
-        UserView userView = usersAdminRepository.findByView(id);
-        return userView;
+        return usersAdminRepository.findByView(id);
     }
 
     public List<UsersAdminResponseDTO> getByHoTen(String hoTen) {
@@ -81,74 +134,122 @@ public class UsersAdminService implements CustomUserDetailsService {
     }
 
     public UsersAdminResponseDTO getByUserName(String userName) {
-        UsersAdminResponseDTO users = usersAdminRepository.findByUserNameDTO(userName);
-        return users;
+        return usersAdminRepository.findByUserNameDTO(userName);
     }
 
+    public List<AuthResponseDTO> dSNameRoleUSers(UUID id) {
+        return usersAdminRepository.findAllRoleAndPermissionsByUserId(id);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Update
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Transactional
     public UsersAdminResponseDTO update(UUID id, UsersAdminRequestDTO dto) {
-        Users users = usersAdminRepository.findById(id)
-                .orElseThrow(() -> new SimpleMessageException("Users không tồn tại"));
-        usersMapper.updateEntity(users, dto);
-        usersAdminRepository.save(users);
-        return usersMapper.toResponseDTO(users);
+        Users user = usersAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Người dùng với id '" + id + "' không tồn tại"));
+
+        // Kiểm tra trùng lặp (loại trừ chính user đang sửa) — throw 409 Conflict
+        if (usersAdminRepository.existsByUserNameAndIdNot(dto.getUserName(), id)) {
+            throw new IllegalStateException("Tên đăng nhập '" + dto.getUserName() + "' đã tồn tại");
+        }
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()
+                && usersAdminRepository.existsByEmailAndIdNot(dto.getEmail(), id)) {
+            throw new IllegalStateException("Email '" + dto.getEmail() + "' đã được sử dụng");
+        }
+        if (usersAdminRepository.existsByCccdAndIdNot(dto.getCccd(), id)) {
+            throw new IllegalStateException("CCCD '" + dto.getCccd() + "' đã được sử dụng");
+        }
+
+        usersMapper.updateEntity(user, dto);
+        usersAdminRepository.save(user);
+        return usersMapper.toResponseDTO(user);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Delete
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Transactional
     public void delete(UUID id) {
-        if (!usersAdminRepository.existsById(id)) {
-            throw new SimpleMessageException("Users không tồn tại");
-        }
-        usersAdminRepository.deleteById(id);
+        Users user = usersAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Người dùng với id '" + id + "' không tồn tại"));
+        checkCanDelete(user.getId());
+        usersAdminRepository.delete(user);
     }
 
     @Transactional
-    public void deleteAllByList(List<UUID> ids) {
+    public BatchDeleteResultDTO deleteAllByList(List<UUID> ids) {
         if (ids == null || ids.isEmpty()) {
-            return;
+            return BatchDeleteResultDTO.success(0);
         }
-        try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
 
-            // }
-            // }
-            usersAdminRepository.deleteAllByIdIn(ids);
+        List<UUID> deletableIds = new ArrayList<>();
+        List<FailedUserDTO> failedUsers = new ArrayList<>();
 
-        } catch (Exception e) {
-            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        for (UUID id : ids) {
+            if (!usersAdminRepository.existsById(id)) {
+                failedUsers.add(FailedUserDTO.builder()
+                        .id(id)
+                        .hoTen(null)
+                        .reason("Người dùng không tồn tại")
+                        .build());
+                continue;
+            }
+
+            String reason = getDeleteBlockReason(id);
+            if (reason != null) {
+                UsersAdminResponseDTO user = usersAdminRepository.findUsersById(id);
+                failedUsers.add(FailedUserDTO.builder()
+                        .id(id)
+                        .hoTen(user != null ? user.getHoTen() : null)
+                        .reason(reason)
+                        .build());
+            } else {
+                deletableIds.add(id);
+            }
+        }
+
+        if (!deletableIds.isEmpty()) {
+            usersAdminRepository.deleteAllByIdIn(deletableIds);
+        }
+
+        return BatchDeleteResultDTO.partial(ids.size(), deletableIds.size(), failedUsers.size(), failedUsers);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void checkCanDelete(UUID userId) {
+        if (hocVienAdminRepository.existsByUsersId(userId)) {
+            throw new IllegalStateException(
+                    "Không thể xóa: người dùng đang là học viên. Vui lòng xóa hồ sơ học viên trước");
+        }
+        if (nhanVienAdminRepository.existsByUsersId(userId)) {
+            throw new IllegalStateException(
+                    "Không thể xóa: người dùng đang là nhân viên. Vui lòng xóa hồ sơ nhân viên trước");
         }
     }
 
-    public List<String> dSNameRoleUSers(UUID id) {
-        return usersAdminRepository.findALlNameRoleByUserId(id);
+    private String getDeleteBlockReason(UUID userId) {
+        if (hocVienAdminRepository.existsByUsersId(userId)) {
+            return "Người dùng đang là học viên. Vui lòng xóa hồ sơ học viên trước.";
+        }
+        if (nhanVienAdminRepository.existsByUsersId(userId)) {
+            return "Người dùng đang là nhân viên. Vui lòng xóa hồ sơ nhân viên trước.";
+        }
+        return null;
     }
 
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UsersAdminResponseDTO user = usersAdminRepository.findByUserNameDTO(username);
-
-        if (user == null) {
-            throw new UsernameNotFoundException("Không tìm thấy user: " + username);
+    private Role findRoleByMaRole(String maRole) {
+        if (maRole == null || maRole.trim().isEmpty()) {
+            return null;
         }
 
-        // Lấy List role từ database (phương thức findALlNameRoleByUserName)
-        List<String> roleNames = usersAdminRepository.findALlNameRoleByUserId(user.getId());
-
-        // Chuyển thành GrantedAuthority
-        List<SimpleGrantedAuthority> authorities = roleNames.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase().trim()))
-                .toList();
-
-        // Nếu không có role nào thì fallback về USER
-        if (authorities.isEmpty()) {
-            authorities = List.of(new SimpleGrantedAuthority("ROLE_GUEST"));
-        }
-
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUserName())
-                .password(user.getPassWord())
-                .authorities(authorities)
-                .disabled(!Boolean.TRUE.equals(user.getTrangThai()))
-                .build();
+        String normalized = maRole.trim();
+        return roleAdminRepository.findFirstByMaRoleIgnoreCase(normalized)
+                .orElseThrow(() -> new IllegalArgumentException("Vai trò '" + normalized + "' không tồn tại"));
     }
 }

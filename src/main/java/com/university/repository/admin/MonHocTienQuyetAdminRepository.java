@@ -10,4 +10,12 @@ import java.util.UUID;
 @Repository
 public interface MonHocTienQuyetAdminRepository extends JpaRepository<MonHocTienQuyet, UUID> {
     void deleteAllByIdIn(List<UUID> ids);
+
+    List<MonHocTienQuyet> findAllByMonHocId(UUID monHocId);
+
+    List<MonHocTienQuyet> findAllByMonTienQuyetId(UUID monTienQuyetId);
+
+    boolean existsByMonHocIdAndMonTienQuyetId(UUID monHocId, UUID monTienQuyetId);
+
+    boolean existsByMonHocIdAndMonTienQuyetIdAndIdNot(UUID monHocId, UUID monTienQuyetId, UUID excludeId);
 }

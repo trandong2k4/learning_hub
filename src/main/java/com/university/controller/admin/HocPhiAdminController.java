@@ -1,11 +1,10 @@
 package com.university.controller.admin;
 
-import com.university.dto.request.admin.BaiVietAdminRequestDTO;
-import com.university.dto.response.admin.BaiVietAdminResponseDTO;
-import com.university.service.admin.BaiVietAdminService;
-import jakarta.validation.Valid;
+import com.university.annotation.RequirePermission;
+import com.university.dto.response.admin.HocPhiAdminResponseDTO;
+import com.university.service.admin.HocPhiAdminService;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,39 +14,97 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/hoc-phi")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_TUITION_VIEW")
 public class HocPhiAdminController {
 
-    private final BaiVietAdminService baiVietService;
+    private final HocPhiAdminService hocPhiService;
 
-    @PostMapping
-    public ResponseEntity<BaiVietAdminResponseDTO> createBaiViet(
-            @Valid @RequestBody BaiVietAdminRequestDTO request) {
-        BaiVietAdminResponseDTO response = baiVietService.createBaiViet(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    @GetMapping
+    public ResponseEntity<List<HocPhiAdminResponseDTO>> getAll() {
+        return ResponseEntity.ok(hocPhiService.getAllHocPhi());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<BaiVietAdminResponseDTO> updateBaiViet(
-            @PathVariable UUID id,
-            @Valid @RequestBody BaiVietAdminRequestDTO request) {
-        BaiVietAdminResponseDTO response = baiVietService.updateBaiViet(id, request);
-        return ResponseEntity.ok(response);
+    @GetMapping("/view")
+    public ResponseEntity<List<HocPhiAdminResponseDTO.HocPhiView>> getAllView() {
+        return ResponseEntity.ok(hocPhiService.getAllHocPhiView());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaiVietAdminResponseDTO> getBaiViet(@PathVariable UUID id) {
-        BaiVietAdminResponseDTO response = baiVietService.getBaiVietById(id);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<HocPhiAdminResponseDTO> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(hocPhiService.getById(id));
     }
 
-    @GetMapping
-    public ResponseEntity<List<BaiVietAdminResponseDTO.BaiVietView>> getAllBaiViet() {
-        return ResponseEntity.ok(baiVietService.getALlBaiViet());
+    @GetMapping("/hoc-ki/{hocKiId}")
+    public ResponseEntity<List<HocPhiAdminResponseDTO>> getByHocKi(@PathVariable UUID hocKiId) {
+        return ResponseEntity.ok(hocPhiService.getHocPhiByHocKi(hocKiId));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBaiViet(@PathVariable UUID id) {
-        baiVietService.deleteBaiViet(id);
-        return ResponseEntity.noContent().build();
+    @GetMapping("/hoc-vien/{hocVienId}")
+    public ResponseEntity<List<HocPhiAdminResponseDTO>> getByHocVien(@PathVariable UUID hocVienId) {
+        return ResponseEntity.ok(hocPhiService.getHocPhiByHocVien(hocVienId));
+    }
+
+    @GetMapping("/dashboard/tong-quan")
+    public ResponseEntity<HocPhiAdminResponseDTO.DashboardTongQuan> getDashboardTongQuan() {
+        return ResponseEntity.ok(hocPhiService.getDashboardTongQuan());
+    }
+
+    @GetMapping("/dashboard/theo-hoc-ki")
+    public ResponseEntity<List<HocPhiAdminResponseDTO.DashboardTheoHocKi>> getDashboardTheoHocKi() {
+        return ResponseEntity.ok(hocPhiService.getDashboardTheoHocKi());
+    }
+
+    @GetMapping("/dashboard/theo-thang")
+    public ResponseEntity<List<HocPhiAdminResponseDTO.DashboardTheoThang>> getDashboardTheoThang() {
+        return ResponseEntity.ok(hocPhiService.getDashboardTheoThang());
+    }
+
+    @GetMapping("/dashboard/top-no")
+    public ResponseEntity<List<HocPhiAdminResponseDTO.DashboardTopNo>> getDashboardTopNo() {
+        return ResponseEntity.ok(hocPhiService.getDashboardTopNo());
+    }
+
+    @GetMapping("/hoc-vien/{hocVienId}/tong-tin-chi")
+    public ResponseEntity<Long> getTongTinChiByHocVien(@PathVariable UUID hocVienId) {
+        return ResponseEntity.ok(hocPhiService.getTongTinChiByHocVien(hocVienId));
+    }
+
+    @GetMapping("/hoc-vien/{hocVienId}/hoc-ki/{hocKiId}/tong-tin-chi")
+    public ResponseEntity<Long> getTongTinChiByHocVienAndHocKi(
+            @PathVariable UUID hocVienId,
+            @PathVariable UUID hocKiId) {
+        return ResponseEntity.ok(hocPhiService.getTongTinChiByHocVienAndHocKi(hocVienId, hocKiId));
+    }
+
+    @GetMapping("/dang-ky-tin-chi")
+    public ResponseEntity<List<HocPhiAdminResponseDTO.DangKyTinChiItem>> getDangKyTinChiAll() {
+        return ResponseEntity.ok(hocPhiService.getDangKyTinChiAll());
+    }
+
+    @GetMapping("/dang-ky-tin-chi/hoc-ki/{hocKiId}")
+    public ResponseEntity<List<HocPhiAdminResponseDTO.DangKyTinChiItem>> getDangKyTinChiByHocKi(
+            @PathVariable UUID hocKiId) {
+        return ResponseEntity.ok(hocPhiService.getDangKyTinChiByHocKi(hocKiId));
+    }
+
+    @GetMapping("/dang-ky-tin-chi/hoc-vien/{hocVienId}")
+    public ResponseEntity<List<HocPhiAdminResponseDTO.DangKyTinChiItem>> getDangKyTinChiByHocVien(
+            @PathVariable UUID hocVienId) {
+        return ResponseEntity.ok(hocPhiService.getDangKyTinChiByHocVien(hocVienId));
+    }
+
+    @GetMapping("/dang-ky-tin-chi/dashboard/tong-quan")
+    public ResponseEntity<HocPhiAdminResponseDTO.DangKyTinChiTongQuan> getDangKyTinChiTongQuan() {
+        return ResponseEntity.ok(hocPhiService.getDangKyTinChiTongQuan());
+    }
+
+    @GetMapping("/dang-ky-tin-chi/dashboard/theo-hoc-ki")
+    public ResponseEntity<List<HocPhiAdminResponseDTO.DangKyTinChiTheoHocKi>> getDangKyTinChiTheoHocKi() {
+        return ResponseEntity.ok(hocPhiService.getDangKyTinChiTongHopTheoHocKi());
+    }
+
+    @GetMapping("/dang-ky-tin-chi/dashboard/theo-nam-hoc")
+    public ResponseEntity<List<HocPhiAdminResponseDTO.DangKyTinChiTheoNamHoc>> getDangKyTinChiTheoNamHoc() {
+        return ResponseEntity.ok(hocPhiService.getDangKyTinChiTongHopTheoNamHoc());
     }
 }

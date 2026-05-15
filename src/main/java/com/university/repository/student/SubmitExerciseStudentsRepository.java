@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 @Repository
-public interface SubmitExerciseStudentsRepository extends JpaRepository<SubmitExercise, Integer> {
+public interface SubmitExerciseStudentsRepository extends JpaRepository<SubmitExercise, UUID> {
 
     // ================= CHECK CÓ KẾT QUẢ =================
     @Query("""
@@ -23,8 +23,15 @@ public interface SubmitExerciseStudentsRepository extends JpaRepository<SubmitEx
     """)
     List<UUID> findExerciseIdsHasResult(@Param("ids") List<UUID> ids);
 
-    // ================= LẤY 1 SUBMIT =================
-    Optional<SubmitExercise> findByExercise_IdAndHocVien_Id(UUID exerciseId, UUID hocVienId);
+    Optional<SubmitExercise> findTopByExercise_IdAndHocVien_IdOrderByPhienThucHienDesc(
+            UUID exerciseId,
+            UUID hocVienId);
+
+    int countByExercise_IdAndHocVien_Id(UUID exerciseId, UUID hocVienId);
+
+    List<SubmitExercise> findByExercise_IdAndHocVien_IdOrderByPhienThucHienDescCreatedAtDesc(
+            UUID exerciseId,
+            UUID hocVienId);
 
     // ================= CHECK TỒN TẠI =================
     boolean existsByExercise_IdAndHocVien_Id(UUID exerciseId, UUID hocVienId);
@@ -34,6 +41,7 @@ public interface SubmitExerciseStudentsRepository extends JpaRepository<SubmitEx
         SELECT s FROM SubmitExercise s
         WHERE s.exercise.id IN :exerciseIds
         AND s.hocVien.id = :hocVienId
+        ORDER BY s.phienThucHien DESC, s.createdAt DESC
     """)
     List<SubmitExercise> findByExerciseIdsAndHocVienId(
             @Param("exerciseIds") List<UUID> exerciseIds,

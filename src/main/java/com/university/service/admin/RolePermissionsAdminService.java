@@ -10,11 +10,12 @@ import com.university.mapper.admin.RolePermissionsAdminMapper;
 import com.university.repository.admin.PermissionsAdminRepository;
 import com.university.repository.admin.RoleAdminRepository;
 import com.university.repository.admin.RolePermissionsAdminRepository;
+import com.university.service.PermissionsCacheService;
 
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,19 +24,73 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RolePermissionsAdminService {
 
-    private final RoleAdminRepository roleAdminRepository;
-    private final PermissionsAdminRepository permissionsRepository;
-    private final RolePermissionsAdminRepository rolePermissionsRepository;
-    private final RolePermissionsAdminMapper mapper;
+        private final RoleAdminRepository roleAdminRepository;
+        private final PermissionsAdminRepository permissionsRepository;
+        private final RolePermissionsAdminRepository rolePermissionsRepository;
+        private final RolePermissionsAdminMapper mapper;
+        private final PermissionsCacheService permissionsCacheService;
+
+    /**
+     * Batch sync: set exact permissions for a role.
+     * - Unassigns any permissions NOT in grantedIds.
+     * - Assigns any permissions in grantedIds NOT currently assigned.
+     * Single evict at the end.
+     */
+    @Transactional
+    public void syncPermissions(UUID roleId, List<UUID> grantedIds) {
+        Role role = roleAdminRepository.findById(roleId)
+                .orElseThrow(() -> new SimpleMessageException("Vai trò không tồn tại"));
+
+        // 1 query: all current RolePermissions for this role
+        List<RolePermissions> current = rolePermissionsRepository.findAllByRoleId(roleId);
+        Set<UUID> currentPermIds = current.stream()
+                .map(rp -> rp.getPermissions().getId())
+                .collect(Collectors.toSet());
+
+        Set<UUID> targetIds = grantedIds != null
+                ? new HashSet<>(grantedIds)
+                : new HashSet<>();
+
+        // 1 query: permissions to insert
+        List<UUID> toGrant = targetIds.stream()
+                .filter(id -> !currentPermIds.contains(id))
+                .toList();
+
+        // 1 query: RolePermissions to delete
+        List<RolePermissions> toRevoke = current.stream()
+                .filter(rp -> !targetIds.contains(rp.getPermissions().getId()))
+                .toList();
+
+        if (!toGrant.isEmpty()) {
+            List<Permissions> perms = permissionsRepository.findAllById(toGrant);
+            List<RolePermissions> entities = perms.stream()
+                    .map(p -> {
+                        RolePermissions rp = new RolePermissions();
+                        rp.setRole(role);
+                        rp.setPermissions(p);
+                        return rp;
+                    })
+                    .toList();
+            rolePermissionsRepository.saveAll(entities);
+        }
+
+        if (!toRevoke.isEmpty()) {
+            List<UUID> revokeIds = toRevoke.stream().map(RolePermissions::getId).toList();
+            rolePermissionsRepository.deleteAllByIdIn(revokeIds);
+        }
+
+        // 1 evict for all affected users — done only once
+        if (!toGrant.isEmpty() || !toRevoke.isEmpty()) {
+            permissionsCacheService.evictAllForRoleChange(roleId);
+        }
+    }
 
     public RolePermissionsAdminResponseDTO create(RolePermissionsAdminRequestDTO dto) {
-        // 1. Kiểm tra xem quyền và vai trò có tồn tại không
         Permissions permission = permissionsRepository.findById(dto.getPermissionsId())
                 .orElseThrow(() -> new SimpleMessageException("Quyền không tồn tại"));
         Role role = roleAdminRepository.findById(dto.getRoleId())
                 .orElseThrow(() -> new SimpleMessageException("Vai trò không tồn tại"));
 
-        // 2. Kiểm tra cặp này đã tồn tại trong DB chưa
         boolean exists = rolePermissionsRepository.existsByRoleIdAndPermissionsId(dto.getRoleId(),
                 dto.getPermissionsId());
         if (exists) {
@@ -43,11 +98,10 @@ public class RolePermissionsAdminService {
         }
 
         try {
-            // 3. Tạo entity mới
             RolePermissions rolePermissions = mapper.toEntity(role, permission);
-
             rolePermissionsRepository.save(rolePermissions);
-
+            // Invalidate permissions cache for all users with this role
+            permissionsCacheService.evictAllForRoleChange(role.getId());
             return mapper.toResponseDTO(rolePermissions);
         } catch (Exception e) {
             throw new SimpleMessageException("Lỗi khi gán quyền: " + e.getMessage());
@@ -66,7 +120,10 @@ public class RolePermissionsAdminService {
                     .findByRoleIdAndPermissionsId(dto.getRoleId(), dto.getPermissionsId())
                     .orElseThrow(() -> new SimpleMessageException("Không tìm thấy mối liên kết để xóa!"));
 
+            UUID roleId = rp.getRole().getId();
             rolePermissionsRepository.delete(rp);
+            // Invalidate permissions cache for all users with this role
+            permissionsCacheService.evictAllForRoleChange(roleId);
         } catch (Exception e) {
             throw new SimpleMessageException("Xóa quyền khỏi vai trò thất bại: " + e.getMessage());
         }
@@ -77,28 +134,43 @@ public class RolePermissionsAdminService {
             RolePermissions rp = rolePermissionsRepository.findById(id)
                     .orElseThrow(() -> new SimpleMessageException("Không tìm thấy mối liên kết để xóa!"));
 
+            UUID roleId = rp.getRole().getId();
             rolePermissionsRepository.delete(rp);
+            // Invalidate permissions cache for all users with this role
+            permissionsCacheService.evictAllForRoleChange(roleId);
         } catch (Exception e) {
             throw new SimpleMessageException("Xóa quyền khỏi vai trò thất bại: " + e.getMessage());
         }
     }
 
     @Transactional
-    public void deleteAllByList(List<UUID> ids) {
+    public List<String> deleteAllByList(List<UUID> ids) {
         if (ids == null || ids.isEmpty()) {
-            return;
+            return new ArrayList<>();
         }
-        try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
 
-            // }
-            // }
+        List<String> cannotDelete = new ArrayList<>();
+
+        for (UUID id : ids) {
+            try {
+                if (!rolePermissionsRepository.existsById(id)) {
+                    cannotDelete.add("ID không tồn tại: " + id);
+                }
+            } catch (Exception e) {
+                cannotDelete.add("ID lỗi: " + id);
+            }
+        }
+
+        if (cannotDelete.isEmpty()) {
             rolePermissionsRepository.deleteAllByIdIn(ids);
-
-        } catch (Exception e) {
-            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+            // Invalidate permissions cache for all affected roles
+            for (UUID id : ids) {
+                rolePermissionsRepository.findById(id).ifPresent(rp -> {
+                    permissionsCacheService.evictAllForRoleChange(rp.getRole().getId());
+                });
+            }
         }
+
+        return cannotDelete;
     }
 }

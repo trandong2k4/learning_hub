@@ -14,6 +14,10 @@ public class DanhGiaGiangVienStudentResponse {
     private String maLopHocPhan;
     private String tenMonHoc;
     private UUID nhanVienId;
+    private UUID hocKiId;
+    private String maHocKi;
+    private String tenHocKi;
+    private LocalDateTime ngayBatDauHocKi;
     private String maNhanVien;
     private String tenGiangVien;
     private Integer diemDanhGia;

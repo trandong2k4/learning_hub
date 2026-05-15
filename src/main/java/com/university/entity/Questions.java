@@ -41,6 +41,9 @@ public class Questions {
     @Column(nullable = false)
     private Boolean loaiCauHoi;
 
+    @Column
+    private Boolean nhieuDapAn = false;
+
     private Float diem;
 
     @CreationTimestamp

@@ -7,8 +7,11 @@ import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.university.annotation.RequirePermission;
 import com.university.dto.request.admin.KhoaAdminRequestDTO;
+import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.KhoaAdminResponseDTO;
 import com.university.entity.Khoa;
 import com.university.repository.admin.KhoaAdminRepository;
@@ -20,6 +23,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/khoa")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_KHOA_VIEW")
 public class KhoaAdminController {
 
     private final KhoaAdminRepository khoaAdminRepository;
@@ -34,6 +38,16 @@ public class KhoaAdminController {
     @PostMapping("list")
     public ResponseEntity<List<KhoaAdminResponseDTO>> createList(@RequestBody @Valid List<KhoaAdminRequestDTO> dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(khoaService.createListKhoa(dto));
+    }
+
+    @PostMapping("/import-excel")
+    public ResponseEntity<ExcelImportResult> importExcel(@RequestParam("file") MultipartFile file)
+            throws java.io.IOException {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(null);
+        }
+        ExcelImportResult result = khoaService.importFromExcel(file);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{id}")

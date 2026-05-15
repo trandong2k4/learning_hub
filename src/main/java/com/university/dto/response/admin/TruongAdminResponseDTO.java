@@ -18,7 +18,7 @@ public class TruongAdminResponseDTO {
     private String tenTruong;
     private String diaChi;
     private String moTa;
-    @JsonFormat(pattern = "dd/MM/yyyy")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDateTime ngayThanhLap;
     private String nguoiDaiDien;
 

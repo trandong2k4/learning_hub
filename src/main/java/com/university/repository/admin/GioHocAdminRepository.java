@@ -56,4 +56,7 @@ public interface GioHocAdminRepository extends JpaRepository<GioHoc, UUID> {
     List<GioHocAdminResponseDTO> searchByTenGioHoc(@Param("keyword") String keyword);
 
     void deleteAllByIdIn(List<UUID> ids);
+
+    @Query("SELECT g.maGioHoc FROM GioHoc g")
+    List<String> findAllMaGioHoc();
 }

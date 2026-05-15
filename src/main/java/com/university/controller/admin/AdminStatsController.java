@@ -1,5 +1,6 @@
 package com.university.controller.admin;
 
+import com.university.annotation.RequirePermission;
 import com.university.dto.response.admin.AdminStatsResponseDTO;
 import com.university.dto.response.admin.WeeklyStatDTO;
 import com.university.repository.admin.BaiVietAdminRepository;
@@ -19,6 +20,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_DASHBOARD_ADMIN_VIEW")
 public class AdminStatsController {
 
     private final HocVienAdminRepository hocVienRepository;

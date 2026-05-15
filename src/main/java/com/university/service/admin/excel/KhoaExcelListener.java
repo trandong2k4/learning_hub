@@ -5,7 +5,6 @@ import com.alibaba.excel.event.AnalysisEventListener;
 import com.university.dto.request.admin.KhoaAdminRequestDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.entity.Khoa;
-import com.university.entity.Truong;
 import com.university.repository.admin.KhoaAdminRepository;
 import com.university.repository.admin.TruongAdminRepository;
 import org.springframework.beans.BeanUtils;
@@ -24,7 +23,7 @@ public class KhoaExcelListener extends
 
     private final Set<String> maKhoaInDb; // Kiểm tra trùng trong db
 
-    private final Map<String, Truong> truongMap;
+    // private final Map<String, Truong> truongMap;
 
     private static final int BATCH_COUNT = 100; // Tăng để hiệu suất tốt
 
@@ -34,9 +33,9 @@ public class KhoaExcelListener extends
     public KhoaExcelListener(TruongAdminRepository truongRepository, KhoaAdminRepository khoaAdminRepository) {
         this.khoaAdminRepository = khoaAdminRepository;
         this.maKhoaInDb = new HashSet<>(khoaAdminRepository.findAllMaKhoa());
-        this.truongMap = new HashMap<>();
-        truongRepository.findAll()
-                .forEach(t -> truongMap.put(t.getMaTruong(), t));
+        // this.truongMap = new HashMap<>();
+        // truongRepository.findAll()
+        // .forEach(t -> truongMap.put(t.getMaTruong(), t));
     }
 
     @Override
@@ -55,23 +54,24 @@ public class KhoaExcelListener extends
 
         // === KIỂM TRA HỢP LỆ ===
         if (maKhoa.length() > 10) {
-            errors.add("Dòng " + rowIndex + ": Mã trường tối đa 10 ký tự");
+            errors.add("Dòng " + rowIndex + ": Mã khoa tối đa 10 ký tự");
             return;
         }
 
-        String maTruong = data.getMaTruong().trim().toUpperCase(); // Giả sử mã trường viết hoa
-        data.setMaTruong(maTruong);
+        // String maTruong = data.getMaTruong().trim().toUpperCase(); // Giả sử mã
+        // trường viết hoa
+        // data.setMaTruong(maTruong);
 
-        if (data.getMaTruong() == null) {
-            errors.add("Dòng " + rowIndex + ": ID Trường không được để trống");
-            return;
-        }
+        // if (data.getMaTruong() == null) {
+        // errors.add("Dòng " + rowIndex + ": Mã Trường không được để trống");
+        // return;
+        // }
 
-        Truong truong = truongMap.get(data.getMaTruong());
-        if (truong == null) {
-            errors.add("Dòng " + rowIndex + ": Trường không tồn tại");
-            return;
-        }
+        // Truong truong = truongMap.get(data.getMaTruong());
+        // if (truong == null) {
+        // errors.add("Dòng " + rowIndex + ": Trường không tồn tại");
+        // return;
+        // }
 
         // Kiểm tra trùng trong cùng file Excel
         if (maKhoaInFile.contains(maKhoa)) {
@@ -89,7 +89,7 @@ public class KhoaExcelListener extends
         // Chuyển sang Entity
         Khoa khoa = new Khoa();
         BeanUtils.copyProperties(data, khoa);
-        khoa.setTruong(truong);
+        // khoa.setTruong(truong);
         toSave.add(khoa);
 
         // Lưu batch

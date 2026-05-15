@@ -6,9 +6,15 @@ import com.university.dto.request.admin.MonHocAdminRequestDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.MonHocAdminResponseDTO;
 import com.university.entity.MonHoc;
+import com.university.entity.LopHocPhan;
+import com.university.entity.ChuongTrinhDaoTao;
+import com.university.entity.MonHocTienQuyet;
 import com.university.exception.SimpleMessageException;
 import com.university.mapper.admin.MonHocAdminMapper;
 import com.university.repository.admin.MonHocAdminRepository;
+import com.university.repository.admin.LopHocPhanAdminRepository;
+import com.university.repository.admin.ChuongTrinhDaoTaoAdminRepository;
+import com.university.repository.admin.MonHocTienQuyetAdminRepository;
 import com.university.service.admin.excel.MonHocExcelListener;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -26,6 +32,9 @@ import java.util.UUID;
 public class MonHocAdminService {
     private final MonHocAdminMapper monHocAdminMapper;
     private final MonHocAdminRepository monHocAdminRepository;
+    private final LopHocPhanAdminRepository lopHocPhanRepository;
+    private final ChuongTrinhDaoTaoAdminRepository chuongTrinhDaoTaoRepository;
+    private final MonHocTienQuyetAdminRepository monHocTienQuyetRepository;
 
     public ExcelImportResult importFromExcel(MultipartFile file) throws java.io.IOException {
         MonHocExcelListener listener = new MonHocExcelListener(monHocAdminRepository);
@@ -76,13 +85,42 @@ public class MonHocAdminService {
     public MonHocAdminResponseDTO updateMonHoc(UUID id, MonHocAdminRequestDTO request) {
         MonHoc monHoc = monHocAdminRepository.findById(id)
                 .orElseThrow(() -> new SimpleMessageException("Môn học không tồn tại"));
+
+        if (!monHoc.getMaMonHoc().equals(request.getMaMonHoc()) && monHocAdminRepository.existsByMaMonHoc(request.getMaMonHoc())) {
+            throw new SimpleMessageException("Mã môn học '" + request.getMaMonHoc() + "' đã tồn tại!");
+        }
+
         monHoc = monHocAdminMapper.updateEntity(monHoc, request);
         monHocAdminRepository.save(monHoc);
         return monHocAdminMapper.toResponseDTO(monHoc);
     }
 
+    @Transactional
     public void delete(UUID monhocId) {
-        monHocAdminRepository.deleteById(monhocId);
+        MonHoc monHoc = monHocAdminRepository.findById(monhocId)
+                .orElseThrow(() -> new SimpleMessageException("Môn học không tồn tại"));
+
+        List<LopHocPhan> lopHocPhans = lopHocPhanRepository.findAllByMonHocId(monhocId);
+        if (!lopHocPhans.isEmpty()) {
+            throw new SimpleMessageException("Môn học '" + monHoc.getTenMonHoc() + "' vẫn còn " + lopHocPhans.size() + " lớp học phần. Vui lòng xóa lớp học phần trước.");
+        }
+
+        List<ChuongTrinhDaoTao> chuongTrinhs = chuongTrinhDaoTaoRepository.findAllByMonHocId(monhocId);
+        if (!chuongTrinhs.isEmpty()) {
+            chuongTrinhDaoTaoRepository.deleteAll(chuongTrinhs);
+        }
+
+        List<MonHocTienQuyet> tienQuyets = monHocTienQuyetRepository.findAllByMonHocId(monhocId);
+        if (!tienQuyets.isEmpty()) {
+            monHocTienQuyetRepository.deleteAll(tienQuyets);
+        }
+
+        List<MonHocTienQuyet> asTienQuyet = monHocTienQuyetRepository.findAllByMonTienQuyetId(monhocId);
+        if (!asTienQuyet.isEmpty()) {
+            monHocTienQuyetRepository.deleteAll(asTienQuyet);
+        }
+
+        monHocAdminRepository.delete(monHoc);
     }
 
     @Transactional
@@ -91,14 +129,17 @@ public class MonHocAdminService {
             return;
         }
         try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
+            for (UUID uuid : ids) {
+                MonHoc monHoc = monHocAdminRepository.findById(uuid)
+                        .orElseThrow(() -> new SimpleMessageException("Môn học không tồn tại"));
 
-            // }
-            // }
+                if (lopHocPhanRepository.existsByMonHocId(uuid)) {
+                    throw new SimpleMessageException("Môn học '" + monHoc.getTenMonHoc() + "' vẫn còn lớp học phần");
+                }
+            }
             monHocAdminRepository.deleteAllByIdIn(ids);
-
+        } catch (SimpleMessageException e) {
+            throw e;
         } catch (Exception e) {
             throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
         }

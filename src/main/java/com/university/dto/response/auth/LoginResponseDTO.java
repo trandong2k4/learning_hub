@@ -22,4 +22,18 @@ public class LoginResponseDTO {
     List<String> dRole;
     private String message;
 
+    public interface UserLoginProjection {
+        UUID getId();
+
+        String getUserName();
+
+        String getHoTen();
+
+        String getPassword();
+
+        boolean isTrangThai();
+
+        String getGhiChu();
+    }
+
 }

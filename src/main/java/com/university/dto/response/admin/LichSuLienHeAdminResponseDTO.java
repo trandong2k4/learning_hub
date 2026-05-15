@@ -20,6 +20,9 @@ public class LichSuLienHeAdminResponseDTO {
     @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
     private LocalDateTime ngayLienHe;
     private UUID lienHeId;
+    private String tenLienHe;
+    private String emailLienHe;
+    private String soDienThoaiLienHe;
 
     public interface LichSuLienHeView {
         UUID getId();

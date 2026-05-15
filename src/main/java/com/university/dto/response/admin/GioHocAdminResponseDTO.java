@@ -16,9 +16,9 @@ public class GioHocAdminResponseDTO {
     private UUID id;
     private String maGioHoc;
     private String tenGioHoc;
-    @JsonFormat(pattern = "hh:mm:ss")
+    @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime thoiGianBatDau;
-    @JsonFormat(pattern = "hh:mm:ss")
+    @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime thoiGianKetThuc;
 
     public interface GioHocView {

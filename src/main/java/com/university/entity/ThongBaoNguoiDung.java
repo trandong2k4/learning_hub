@@ -15,13 +15,14 @@ public class ThongBaoNguoiDung {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private Boolean daNhan;
+    @Column(nullable = false)
+    private Boolean daNhan = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "users_id", nullable = false)
     private Users users;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "thong_bao_id", nullable = false)
     private ThongBao thongBao;
 }

@@ -1,5 +1,6 @@
 package com.university.controller.admin;
 
+import com.university.annotation.RequirePermission;
 import com.university.dto.request.admin.BaiVietAdminRequestDTO;
 import com.university.dto.response.admin.BaiVietAdminResponseDTO;
 import com.university.service.admin.BaiVietAdminService;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/bai-viet")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_POST_VIEW")
 public class BaiVietAdminController {
 
     private final BaiVietAdminService baiVietService;

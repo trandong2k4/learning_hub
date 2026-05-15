@@ -1,6 +1,6 @@
 package com.university.dto.request.admin.warrap;
 
-import com.university.dto.request.admin.NhanVienAdminRequestDTO;
+import com.university.dto.request.admin.NhanVienCreateDetailsDTO;
 import com.university.dto.request.admin.UsersAdminRequestDTO;
 
 import jakarta.validation.Valid;
@@ -22,5 +22,5 @@ public class NhanVienCreateRequestDTO {
 
     @Valid
     @NotNull(message = "Thông tin nhân viên không được để trống")
-    private NhanVienAdminRequestDTO nhanVienDetails;
+    private NhanVienCreateDetailsDTO nhanVienDetails;
 }

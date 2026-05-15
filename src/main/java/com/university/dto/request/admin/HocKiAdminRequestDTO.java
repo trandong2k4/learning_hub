@@ -17,8 +17,8 @@ public class HocKiAdminRequestDTO {
     private String maHocKi;
     @NotBlank(message = "Tên học kì không được đẻ trống")
     private String tenHocKi;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+    @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")
     private LocalDateTime ngayBatDau;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+    @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")
     private LocalDateTime ngayKetThuc;
 }

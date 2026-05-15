@@ -9,6 +9,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.university.annotation.RequirePermission;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @RequestMapping("/api/student/quiz")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('STUDENT')")
+@RequirePermission("STU_QUIZ_LIST_VIEW")
 public class QuizStudentController {
 
     private final QuizStudentService quizStudentService;

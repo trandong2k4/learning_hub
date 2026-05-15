@@ -1,57 +1,74 @@
 package com.university.config;
 
-import com.university.service.auth.CustomUserDetailsService;
-import com.university.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.*;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-        private final JwtUtil jwtUtil;
-        private final CustomUserDetailsService userDetailsService;
-        private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
-        private final CustomAccessDeniedHandler customAccessDeniedHandler;
+        private final JwtAuthenticationFilter jwtFilter;
+        private final CustomAuthenticationEntryPoint entryPoint;
+        private final CustomAccessDeniedHandler accessDeniedHandler;
+
+        @Value("${app.cors.allowed-origins}")
+        private List<String> allowedOrigins;
 
         @Bean
-        public JwtAuthenticationFilter jwtAuthenticationFilter() {
-                JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtUtil);
-                filter.setUserDetailsService(userDetailsService);
-                return filter;
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
+                http
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                                .csrf(csrf -> csrf.disable())
+
+                                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/api/auth/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/files/**").permitAll()
+                                                .requestMatchers("/actuator/**").permitAll()
+                                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                                                .requestMatchers("/api/student/**").hasAnyRole("STUDENT", "ADMIN")
+                                                .requestMatchers("/api/lecturer/**").hasAnyRole("LECTURER", "ADMIN")
+                                                .requestMatchers("/api/accounting/**").hasAnyRole("ACCOUNTING", "ADMIN")
+                                                .requestMatchers("/api/notifications/**").authenticated()
+                                                .requestMatchers("/api/chatbot/**").authenticated()
+                                                .requestMatchers("/api/**").authenticated()
+                                                .anyRequest().authenticated())
+
+                                .exceptionHandling(ex -> ex
+                                                .authenticationEntryPoint(entryPoint)
+                                                .accessDeniedHandler(accessDeniedHandler))
+
+                                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
+                return http.build();
         }
 
         @Bean
-        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-                http
-                                .csrf(csrf -> csrf.disable())
-                                .sessionManagement(session -> session
-                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                                .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/api/auth/**",
-                                                                "/swagger-ui/**", "/v3/api-docs/**")
-                                                .permitAll()
-
-                                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                                                .requestMatchers("/api/student/**").hasAnyRole("STUDENT", "ADMIN")
-                                                .requestMatchers("/api/lecture/**").hasAnyRole("LECTURE", "ADMIN")
-                                                .requestMatchers("/api/accounting/**").hasAnyRole("ACCOUNTING", "ADMIN")
-                                                .requestMatchers("/api/**").authenticated()
-                                                .anyRequest().permitAll())
-                                .exceptionHandling(ex -> ex
-                                                .authenticationEntryPoint(customAuthenticationEntryPoint)
-                                                .accessDeniedHandler(customAccessDeniedHandler))
-                                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
-
-                return http.build();
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration config = new CorsConfiguration();
+                config.setAllowedOrigins(allowedOrigins);
+                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+                config.setAllowedHeaders(List.of("*"));
+                config.setAllowCredentials(true);
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/api/**", config);
+                return source;
         }
 
         @Bean

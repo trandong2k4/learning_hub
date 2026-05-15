@@ -15,4 +15,5 @@ public class QuizListStudentResponse {
     private Integer thoiGianLam;
 
     private QuizStatusEnum status; // UPCOMING | DOING | DONE | EXPIRED
+    private Float score;
 }

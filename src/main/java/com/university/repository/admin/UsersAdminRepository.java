@@ -2,6 +2,8 @@ package com.university.repository.admin;
 
 import com.university.dto.response.admin.UsersAdminResponseDTO;
 import com.university.dto.response.admin.UsersAdminResponseDTO.UserView;
+import com.university.dto.response.auth.AuthResponseDTO;
+import com.university.dto.response.auth.LoginResponseDTO.UserLoginProjection;
 import com.university.entity.Users;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -17,12 +19,39 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
 
     boolean existsByEmail(String email);
 
+    @Query("""
+                SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END
+                FROM Users u
+                WHERE u.id = :id
+                AND (
+                    u.id IN (SELECT nv.users.id FROM NhanVien nv WHERE nv.users IS NOT NULL)
+                    OR u.id IN (SELECT hv.users.id FROM HocVien hv WHERE hv.users IS NOT NULL)
+                )
+            """)
+    boolean isUserAlreadyAssigned(@Param("id") UUID id);
+
     Optional<Users> findByEmail(String email);
 
     Optional<Users> findByUserName(String userName);
 
+    @Query("""
+                SELECT
+                    u.id as id,
+                    u.userName as userName,
+                    u.passWord as password,
+                    u.hoTen as hoTen,
+                    u.trangThai as trangThai,
+                    u.ghiChu as ghiChu
+                FROM Users u
+                WHERE u.userName = :username
+            """)
+    Optional<UserLoginProjection> findByUserLoginProjection(@Param("username") String username);
+
     @Query("SELECT u.userName FROM Users u")
     List<String> findAllUserNames();
+
+    @Query("SELECT u.cccd FROM Users u WHERE u.cccd IS NOT NULL")
+    List<String> findAllCccds();
 
     @Query("""
              SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(
@@ -47,13 +76,33 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
     UsersAdminResponseDTO findByUserNameDTO(@Param("username") String username);
 
     @Query("""
+                SELECT DISTINCT new com.university.dto.response.auth.AuthResponseDTO(r.maRole, p.maPermissions)
+                FROM Users u
+                JOIN u.dUserRoles ur
+                JOIN ur.role r
+                LEFT JOIN r.dRolePermissions rp
+                LEFT JOIN rp.permissions p
+                WHERE u.id = :userId
+            """)
+    List<AuthResponseDTO> findAllRoleAndPermissionsByUserId(@Param("userId") UUID userId);
+
+    @Query("""
                 SELECT r.maRole
                 FROM Users u
                 JOIN u.dUserRoles ur
                 JOIN ur.role r
                 WHERE u.id = :userId
             """)
-    List<String> findALlNameRoleByUserId(@Param("userId") UUID userId);
+    List<String> findAllRoleByUserId(@Param("userId") UUID userId);
+
+    @Query("""
+                            SELECT u
+                            FROM Users u
+                            LEFT JOIN FETCH u.dUserRoles d
+                            LEFT JOIN FETCH d.role r
+            WHERE u.userName = :username
+                        """)
+    Optional<Users> findByUsernameWithRoles(String username);
 
     @Query("""
              SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(
@@ -139,5 +188,50 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
             """)
     UserView findByView(@Param("usersId") UUID usersId);
 
+    @Query("""
+            SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(
+                u.id,
+                u.userName,
+                u.passWord,
+                u.email,
+                u.cccd,
+                u.hoTen,
+                u.diaChi,
+                u.gioiTinh,
+                u.ngaySinh,
+                u.soDienThoai,
+                u.trangThai,
+                u.ghiChu,
+                u.createAt,
+                u.updateAt
+            )
+            FROM Users u
+            WHERE u.id NOT IN (
+                SELECT nv.users.id FROM NhanVien nv WHERE nv.users IS NOT NULL
+            )
+            AND u.id NOT IN (
+                SELECT hv.users.id FROM HocVien hv WHERE hv.users IS NOT NULL
+            )
+            ORDER BY u.hoTen ASC
+            """)
+    List<UsersAdminResponseDTO> findAllUsersNotAssigned();
+
     void deleteAllByIdIn(List<UUID> ids);
+
+    boolean existsByEmailAndIdNot(String email, UUID id);
+
+    boolean existsByCccd(String cccd);
+
+    boolean existsByCccdAndIdNot(String cccd, UUID id);
+
+    boolean existsByUserNameAndIdNot(String userName, UUID id);
+
+    @Query("""
+                SELECT u.id
+                FROM Users u
+                JOIN u.dUserRoles ur
+                JOIN ur.role r
+                WHERE r.id = :roleId
+            """)
+    List<UUID> findUserIdsByRoleId(@Param("roleId") UUID roleId);
 }

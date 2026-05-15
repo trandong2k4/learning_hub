@@ -13,8 +13,8 @@ public class KhoaAdminResponseDTO {
     private String tenKhoa;
     private String diaChi;
     private String moTa;
-    private UUID truongId;
-    private String tenTruong;
+    // private UUID truongId;
+    // private String tenTruong;
 
     public interface KhoaView {
 
@@ -27,15 +27,5 @@ public class KhoaAdminResponseDTO {
         String getDiaChi();
 
         String getMoTa();
-
-        TruongInfo getTruong();
-
-        interface TruongInfo {
-            UUID getId();
-
-            String getTenTruong();
-
-            String getMaTruong();
-        }
     }
 }

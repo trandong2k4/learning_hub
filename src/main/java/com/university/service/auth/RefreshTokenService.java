@@ -4,6 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -12,35 +16,99 @@ public class RefreshTokenService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    private static final String REFRESH_TOKEN_KEY_PREFIX = "refresh_token:";
-    private static final long REFRESH_EXPIRY_DAYS = 7;
+    private static final String TOKEN_PREFIX = "refresh_token:";
+    private static final String USER_SESSION_PREFIX = "user_sessions:";
+    private static final long EXPIRY_DAYS = 7;
+    private static final int MAX_SESSIONS = 5;
 
-    // Lưu refresh token (key = token)
-    public void saveRefreshToken(String username, String refreshToken) {
-        String key = REFRESH_TOKEN_KEY_PREFIX + refreshToken;
+    // 🔥 HASH TOKEN (SHA-256)
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
 
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Hash error");
+        }
+    }
+
+    // 🔥 CREATE TOKEN
+    public String createRefreshToken(String userId) {
+
+        String rawToken = UUID.randomUUID().toString();
+        String hashedToken = hashToken(rawToken);
+
+        String tokenKey = TOKEN_PREFIX + hashedToken;
+        String sessionKey = USER_SESSION_PREFIX + userId;
+
+        // Lưu token → user
         redisTemplate.opsForValue().set(
-                key,
-                username,
-                REFRESH_EXPIRY_DAYS,
+                tokenKey,
+                userId,
+                EXPIRY_DAYS,
                 TimeUnit.DAYS);
+
+        // Lưu session list
+        redisTemplate.opsForSet().add(sessionKey, hashedToken);
+        redisTemplate.expire(sessionKey, EXPIRY_DAYS, TimeUnit.DAYS);
+
+        // 🔥 Limit số session
+        Set<String> sessions = redisTemplate.opsForSet().members(sessionKey);
+        if (sessions != null && sessions.size() > MAX_SESSIONS) {
+            String oldest = sessions.iterator().next();
+            redisTemplate.delete(TOKEN_PREFIX + oldest);
+            redisTemplate.opsForSet().remove(sessionKey, oldest);
+        }
+
+        return rawToken;
     }
 
-    // Lấy username từ refresh token
-    public String getUsernameByToken(String refreshToken) {
-        String key = REFRESH_TOKEN_KEY_PREFIX + refreshToken;
-        return redisTemplate.opsForValue().get(key);
+    // 🔥 VALIDATE TOKEN
+    public boolean validate(String rawToken, String userId) {
+
+        String hashed = hashToken(rawToken);
+        String key = TOKEN_PREFIX + hashed;
+
+        String storedUser = redisTemplate.opsForValue().get(key);
+
+        return storedUser != null && storedUser.equals(userId);
     }
 
-    // Xóa token khi logout
-    public void deleteByToken(String refreshToken) {
-        String key = REFRESH_TOKEN_KEY_PREFIX + refreshToken;
-        redisTemplate.delete(key);
+    // 🔥 GET USER
+    public String getUserId(String rawToken) {
+        return redisTemplate.opsForValue()
+                .get(TOKEN_PREFIX + hashToken(rawToken));
     }
 
-    // Validate token
-    public boolean validateRefreshToken(String refreshToken, String username) {
-        String storedUsername = getUsernameByToken(refreshToken);
-        return storedUsername != null && storedUsername.equals(username);
+    // 🔥 LOGOUT (1 device)
+    public void deleteToken(String rawToken, String userId) {
+
+        String hashed = hashToken(rawToken);
+
+        redisTemplate.delete(TOKEN_PREFIX + hashed);
+        redisTemplate.opsForSet()
+                .remove(USER_SESSION_PREFIX + userId, hashed);
+    }
+
+    // 🔥 LOGOUT ALL DEVICES
+    public void deleteAllByUser(String userId) {
+
+        String sessionKey = USER_SESSION_PREFIX + userId;
+
+        Set<String> sessions = redisTemplate.opsForSet().members(sessionKey);
+
+        if (sessions != null) {
+            for (String token : sessions) {
+                redisTemplate.delete(TOKEN_PREFIX + token);
+            }
+        }
+
+        redisTemplate.delete(sessionKey);
     }
 }

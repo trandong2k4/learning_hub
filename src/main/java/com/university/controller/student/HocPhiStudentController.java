@@ -8,6 +8,7 @@ import com.university.dto.response.student.ThanhToanHocPhiStudentResponse;
 import com.university.service.student.HocPhiStudentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.university.annotation.RequirePermission;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/student/hoc-phi")
 @RequiredArgsConstructor
+@RequirePermission("STU_TUITION_SUMMARY_VIEW")
 public class HocPhiStudentController {
 
     private final HocPhiStudentService hocPhiStudentService;
@@ -36,10 +38,10 @@ public class HocPhiStudentController {
         return ResponseEntity.ok(hocPhiStudentService.getDanhSachPhuongThucThanhToan());
     }
 
-    @PostMapping("/pay")
-    public ResponseEntity<ThanhToanHocPhiStudentResponse> thanhToanOnline(
+    @PostMapping("/nop-chung-tu")
+    public ResponseEntity<ThanhToanHocPhiStudentResponse> nopChungTu(
             @Valid @RequestBody ThanhToanHocPhiStudentRequest request) {
-        return ResponseEntity.ok(hocPhiStudentService.thanhToanOnline(request));
+        return ResponseEntity.ok(hocPhiStudentService.nopChungTu(request));
     }
 
     @GetMapping("/history")

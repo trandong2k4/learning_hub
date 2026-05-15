@@ -1,5 +1,13 @@
 package com.university.enums;
 
 public enum TaiLieuEnum {
-    PDF, VIDEO, SLIDE
+    PDF,
+    DOCX,
+    PPTX,
+    ZIP,
+    DOC,
+    XLSX,
+    VIDEO,
+    SLIDE,
+    OTHER
 }

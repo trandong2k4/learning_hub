@@ -139,6 +139,10 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-pool2</artifactId>
+		</dependency>
 
 		<!-- JWT -->
 		<!-- API: chứa interface, JwtBuilder, Claims, ... -->
@@ -174,6 +178,13 @@
 			<groupId>com.alibaba</groupId>
 			<artifactId>easyexcel</artifactId>
 			<version>3.3.2</version>
+		</dependency>
+
+		<!-- S3-compatible storage client (Supabase Storage S3 protocol) -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
+			<version>2.25.60</version>
 		</dependency>
 
 		<!-- Spring Components Indexer -->

@@ -31,7 +31,6 @@ public class ThanhToanHocPhi {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @CreationTimestamp
     private LocalDateTime ngayThanhToan;
 
     @Column(nullable = false)
@@ -44,6 +43,7 @@ public class ThanhToanHocPhi {
     private String maGiaoDichGateway;
 
     @CreationTimestamp
+    @Column(updatable = false)
     private LocalDateTime createdAt;
 
     @OneToOne(fetch = FetchType.LAZY)

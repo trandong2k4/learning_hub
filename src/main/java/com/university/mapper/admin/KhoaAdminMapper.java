@@ -35,8 +35,8 @@ public class KhoaAdminMapper {
         dto.setTenKhoa(k.getTenKhoa());
         dto.setDiaChi(k.getDiaChi());
         dto.setMoTa(k.getMoTa());
-        dto.setTruongId(k.getTruong().getId());
-        dto.setTenTruong(k.getTruong().getTenTruong());
+        // dto.setTruongId(k.getTruong().getId());
+        // dto.setTenTruong(k.getTruong().getTenTruong());
         return dto;
     }
 }

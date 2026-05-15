@@ -8,9 +8,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class LopHocPhanAdminMapper {
 
-    /**
-     * Chuyển từ Request DTO sang Entity để lưu mới
-     */
     public LopHocPhan toEntity(LopHocPhanAdminRequestDTO dto) {
         if (dto == null) {
             return null;
@@ -20,20 +17,12 @@ public class LopHocPhanAdminMapper {
         entity.setMaLopHocPhan(dto.getMaLopHocPhan());
         entity.setSoLuongToiDa(dto.getSoLuongToiDa());
         entity.setTrangThai(dto.getTrangThai());
-
-        // Nếu DTO truyền thẳng object Entity (như trong code bạn gửi):
-        entity.setHocKi(dto.getHocKiId());
-        entity.setMonHoc(dto.getMonHocId());
-
-        // Nếu sau này bạn đổi DTO thành UUID, hãy gán các object này trong Service thay
-        // vì ở đây
+        entity.setHanDangKy(dto.getHanDangKy());
+        entity.setHanHuy(dto.getHanHuy());
 
         return entity;
     }
 
-    /**
-     * Cập nhật thông tin Entity hiện có từ DTO
-     */
     public void updateEntity(LopHocPhan entity, LopHocPhanAdminRequestDTO dto) {
         if (dto == null || entity == null) {
             return;
@@ -42,17 +31,10 @@ public class LopHocPhanAdminMapper {
         entity.setMaLopHocPhan(dto.getMaLopHocPhan());
         entity.setSoLuongToiDa(dto.getSoLuongToiDa());
         entity.setTrangThai(dto.getTrangThai());
-
-        // Cập nhật quan hệ
-        entity.setHocKi(dto.getHocKiId());
-        entity.setMonHoc(dto.getMonHocId());
-
-        // entity.setUpdatedAt(LocalDateTime.now());
+        entity.setHanDangKy(dto.getHanDangKy());
+        entity.setHanHuy(dto.getHanHuy());
     }
 
-    /**
-     * Chuyển từ Entity sang Response DTO để trả về cho Client
-     */
     public LopHocPhanAdminResponseDTO toResponseDTO(LopHocPhan entity) {
         if (entity == null) {
             return null;
@@ -62,11 +44,23 @@ public class LopHocPhanAdminMapper {
         dto.setId(entity.getId());
         dto.setMaLopHocPhan(entity.getMaLopHocPhan());
         dto.setSoLuongToiDa(entity.getSoLuongToiDa());
+        dto.setSoLuongDaDangKy((long) entity.getDDangKyTinChis().size());
         dto.setTrangThai(entity.getTrangThai());
+        dto.setHanDangKy(entity.getHanDangKy());
+        dto.setHanHuy(entity.getHanHuy());
 
-        // Trả về object Entity tương ứng theo cấu trúc DTO bạn đã định nghĩa
-        dto.setHocKiId(entity.getHocKi());
-        dto.setMonHocId(entity.getMonHoc());
+        if (entity.getHocKi() != null) {
+            dto.setHocKiId(entity.getHocKi().getId());
+            dto.setMaHocKi(entity.getHocKi().getMaHocKi());
+            dto.setTenHocKi(entity.getHocKi().getTenHocKi());
+        }
+
+        if (entity.getMonHoc() != null) {
+            dto.setMonHocId(entity.getMonHoc().getId());
+            dto.setMaMonHoc(entity.getMonHoc().getMaMonHoc());
+            dto.setTenMonHoc(entity.getMonHoc().getTenMonHoc());
+            dto.setSoTinChi(entity.getMonHoc().getSoTinChi());
+        }
 
         return dto;
     }

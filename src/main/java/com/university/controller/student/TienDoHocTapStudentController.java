@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import com.university.annotation.RequirePermission;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +22,7 @@ import java.util.List;
 @RequestMapping("/api/student/learning-progress")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('STUDENT')")
+@RequirePermission("STU_DASH_LEARN_PROGRESS")
 public class TienDoHocTapStudentController {
 
     private final TienDoHocTapStudentService tienDoHocTapStudentService;

@@ -18,7 +18,7 @@ public class TruongAdminMapper {
         truong.setTenTruong(dto.getTenTruong());
         truong.setDiaChi(dto.getDiaChi());
         truong.setMoTa(dto.getMoTa());
-        truong.setNgayThanhLap(dto.getNgayThanhLap().atStartOfDay());
+        truong.setNgayThanhLap(dto.getNgayThanhLap() != null ? dto.getNgayThanhLap().atStartOfDay() : null);
         truong.setNguoiDaiDien(dto.getNguoiDaiDien());
         return truong;
     }
@@ -28,7 +28,7 @@ public class TruongAdminMapper {
         truong.setTenTruong(dto.getTenTruong());
         truong.setDiaChi(dto.getDiaChi());
         truong.setMoTa(dto.getMoTa());
-        truong.setNgayThanhLap(dto.getNgayThanhLap().atStartOfDay());
+        truong.setNgayThanhLap(dto.getNgayThanhLap() != null ? dto.getNgayThanhLap().atStartOfDay() : null);
         truong.setNguoiDaiDien(dto.getNguoiDaiDien());
     }
 
@@ -40,7 +40,7 @@ public class TruongAdminMapper {
         t.setDiaChi(entity.getDiaChi());
         t.setMoTa(entity.getMoTa());
         t.setNgayThanhLap(entity.getNgayThanhLap());
-        t.setNguoiDaiDien(t.getNguoiDaiDien());
+        t.setNguoiDaiDien(entity.getNguoiDaiDien());
         return t;
     }
 }

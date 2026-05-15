@@ -2,24 +2,22 @@ package com.university.dto.response.student;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+
 import com.fasterxml.jackson.annotation.JsonFormat;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 
-@Getter
-@Setter
 @Data
 @AllArgsConstructor
-
 public class DangKyTinChiResponseDTO {
 
     private UUID id;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+
+    @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")
     private LocalDateTime createdAt;
 
-    private UUID HocVienId;
+    private UUID hocVienId;
     private String maHocVien;
 
     private UUID lopHocPhanId;
@@ -28,6 +26,6 @@ public class DangKyTinChiResponseDTO {
     private UUID monHocId;
     private String maMonHoc;
     private Integer soTinChi;
-    
 
+    private UUID hocKiId;
 }

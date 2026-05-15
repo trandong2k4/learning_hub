@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -32,7 +33,7 @@ public interface NganhAdminRepository extends JpaRepository<Nganh, UUID> {
                         """)
         List<NganhAdminResponseDTO> searchByTenNganh(@Param("keyword") String keyword);
 
-        Nganh findByMaNganh(String maNganh);
+        Optional<Nganh> findByMaNganh(String maNganh);
 
         @Query("SELECT n.maNganh FROM Nganh n")
         List<String> findAllMaNganh();
@@ -53,4 +54,6 @@ public interface NganhAdminRepository extends JpaRepository<Nganh, UUID> {
         List<NganhAdminResponseDTO> getAllDTO();
 
         void deleteAllByIdIn(List<UUID> ids);
+
+        List<Nganh> findAllByKhoaId(UUID khoaId);
 }

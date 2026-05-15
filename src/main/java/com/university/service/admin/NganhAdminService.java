@@ -6,10 +6,14 @@ import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.NganhAdminResponseDTO;
 import com.university.entity.Khoa;
 import com.university.entity.Nganh;
+import com.university.entity.ChuongTrinhDaoTao;
+import com.university.entity.HocVien;
 import com.university.exception.SimpleMessageException;
 import com.university.mapper.admin.NganhAdminMapper;
 import com.university.repository.admin.KhoaAdminRepository;
 import com.university.repository.admin.NganhAdminRepository;
+import com.university.repository.admin.ChuongTrinhDaoTaoAdminRepository;
+import com.university.repository.admin.HocVienAdminRepository;
 import com.university.service.admin.excel.NganhExcelListener;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -29,14 +33,16 @@ public class NganhAdminService {
     private final NganhAdminRepository nganhRepository;
     private final NganhAdminMapper nganhMapper;
     private final KhoaAdminRepository khoaRepository;
+    private final ChuongTrinhDaoTaoAdminRepository chuongTrinhDaoTaoRepository;
+    private final HocVienAdminRepository hocVienRepository;
 
     public NganhAdminResponseDTO create(NganhAdminRequestDTO dto) {
         if (nganhRepository.existsByMaNganh(dto.getMaNganh())) {
-            throw new SimpleMessageException("Mã ngành đã tồn tại");
+            throw new SimpleMessageException("Mã ngành '" + dto.getMaNganh() + "' đã tồn tại");
         }
         Khoa khoa = khoaRepository.findByMaKhoa(dto.getMaKhoa());
         if (khoa == null) {
-            throw new EntityNotFoundException("Không tìm thấy Khoa");
+            throw new EntityNotFoundException("Không tìm thấy Khoa với mã: " + dto.getMaKhoa());
         }
         Nganh nganh = nganhMapper.toEntity(dto, khoa);
         return nganhMapper.toResponseDTO(nganhRepository.save(nganh));
@@ -68,6 +74,11 @@ public class NganhAdminService {
     public NganhAdminResponseDTO update(UUID id, NganhAdminRequestDTO dto) {
         Nganh existing = nganhRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy ngành"));
+
+        if (!existing.getMaNganh().equals(dto.getMaNganh()) && nganhRepository.existsByMaNganh(dto.getMaNganh())) {
+            throw new SimpleMessageException("Mã ngành '" + dto.getMaNganh() + "' đã tồn tại");
+        }
+
         Khoa khoa = khoaRepository.findByMaKhoa(dto.getMaKhoa());
         if (khoa == null) {
             throw new EntityNotFoundException("Không tìm thấy khoa với mã khoa: " + dto.getMaKhoa());
@@ -80,12 +91,22 @@ public class NganhAdminService {
         return nganhMapper.toResponseDTO(nganhRepository.save(existing));
     }
 
+    @Transactional
     public void delete(UUID id) {
-        Nganh nganh = nganhRepository.findById(id).orElseThrow();
-        if (nganh == null) {
-            throw new EntityNotFoundException("Nganh ko ton tai");
+        Nganh nganh = nganhRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Ngành không tồn tại"));
+
+        List<ChuongTrinhDaoTao> chuongTrinhs = chuongTrinhDaoTaoRepository.findAllByNganhId(id);
+        if (!chuongTrinhs.isEmpty()) {
+            throw new SimpleMessageException("Ngành '" + nganh.getTenNganh() + "' vẫn còn " + chuongTrinhs.size() + " chương trình đào tạo. Vui lòng xóa chương trình đào tạo trước.");
         }
-        nganhRepository.deleteById(id);
+
+        List<HocVien> hocViens = hocVienRepository.findAllByNganhId(id);
+        if (!hocViens.isEmpty()) {
+            throw new SimpleMessageException("Ngành '" + nganh.getTenNganh() + "' vẫn còn " + hocViens.size() + " học viên đang theo học. Vui lòng xóa hoặc chuyển học viên sang ngành khác trước.");
+        }
+
+        nganhRepository.delete(nganh);
     }
 
     @Transactional
@@ -94,14 +115,23 @@ public class NganhAdminService {
             return;
         }
         try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
+            for (UUID uuid : ids) {
+                Nganh nganh = nganhRepository.findById(uuid)
+                        .orElseThrow(() -> new EntityNotFoundException("Ngành không tồn tại"));
 
-            // }
-            // }
+                List<ChuongTrinhDaoTao> chuongTrinhs = chuongTrinhDaoTaoRepository.findAllByNganhId(uuid);
+                if (!chuongTrinhs.isEmpty()) {
+                    throw new SimpleMessageException("Ngành '" + nganh.getTenNganh() + "' vẫn còn chương trình đào tạo");
+                }
+
+                List<HocVien> hocViens = hocVienRepository.findAllByNganhId(uuid);
+                if (!hocViens.isEmpty()) {
+                    throw new SimpleMessageException("Ngành '" + nganh.getTenNganh() + "' vẫn còn học viên");
+                }
+            }
             nganhRepository.deleteAllByIdIn(ids);
-
+        } catch (SimpleMessageException e) {
+            throw e;
         } catch (Exception e) {
             throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
         }

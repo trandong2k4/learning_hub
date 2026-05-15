@@ -17,9 +17,16 @@ public class PhongAdminResponseDTO {
     private Integer tang;
     private Integer sucChua;
     private TinhTrangPhongEnum tinhTrang;
+    private Integer soLichHoc;
 
     public interface PhongView {
         UUID getId();
+        String getMaPhong();
+        String getTenPhong();
+        String getToaNha();
+        Integer getTang();
+        Integer getSucChua();
+        TinhTrangPhongEnum getTinhTrang();
     }
 
 }

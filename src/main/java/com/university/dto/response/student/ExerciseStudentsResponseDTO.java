@@ -14,8 +14,11 @@ public class ExerciseStudentsResponseDTO {
     private UUID id;
     private String tieude;
     private String moTa;
+    private String fileExerciseUrl;
     private LocalDateTime thoiGianBatDau;
     private LocalDateTime thoiGianKetThuc;
+    private Integer gioiHanLanLam;
+    private Integer soLanDaLam;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

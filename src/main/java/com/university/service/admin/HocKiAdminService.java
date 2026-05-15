@@ -1,21 +1,20 @@
 package com.university.service.admin;
 
-import com.university.dto.request.admin.BaiVietAdminRequestDTO;
-import com.university.dto.response.admin.BaiVietAdminResponseDTO;
-import com.university.entity.BaiViet;
-import com.university.entity.Users;
+import com.university.dto.request.admin.HocKiAdminRequestDTO;
+import com.university.dto.response.admin.HocKiAdminResponseDTO;
+import com.university.entity.HocKi;
+import com.university.entity.LopHocPhan;
+import com.university.entity.HocPhi;
 import com.university.exception.SimpleMessageException;
-import com.university.mapper.admin.BaiVietAdminMapper;
-import com.university.repository.admin.BaiVietAdminRepository;
+import com.university.mapper.admin.HocKiAdminMapper;
 import com.university.repository.admin.HocKiAdminRepository;
-import com.university.repository.admin.UsersAdminRepository;
-
+import com.university.repository.admin.LopHocPhanAdminRepository;
+import com.university.repository.admin.HocPhiAdminRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,56 +23,72 @@ import java.util.UUID;
 public class HocKiAdminService {
 
     private final HocKiAdminRepository hocKiAdminRepository;
-    private final BaiVietAdminRepository baiVietRepository;
-    private final UsersAdminRepository usersRepository;
-    private final BaiVietAdminMapper baiVietMapper;
+    private final HocKiAdminMapper hocKiMapper;
+    private final LopHocPhanAdminRepository lopHocPhanAdminRepository;
+    private final HocPhiAdminRepository hocPhiAdminRepository;
 
     @Transactional
-    public BaiVietAdminResponseDTO createBaiViet(BaiVietAdminRequestDTO request) {
-        Users user = usersRepository.findById(request.getUsersId())
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
+    public HocKiAdminResponseDTO createHocKi(HocKiAdminRequestDTO request) {
+        if (hocKiAdminRepository.existsByMaHocKi(request.getMaHocKi())) {
+            throw new SimpleMessageException("Mã học kì đã tồn tại");
+        }
 
-        BaiViet baiViet = baiVietMapper.toEntity(request);
-        baiViet.setUsers(user);
-        baiViet.setCreatedAt(LocalDateTime.now());
-        baiViet.setUpdatedAt(LocalDateTime.now());
+        if (request.getNgayBatDau() != null && request.getNgayKetThuc() != null
+                && request.getNgayBatDau().isAfter(request.getNgayKetThuc())) {
+            throw new SimpleMessageException("Ngày bắt đầu phải nhỏ hơn ngày kết thúc");
+        }
 
-        BaiViet saved = baiVietRepository.save(baiViet);
-        return baiVietMapper.toResponseDTO(saved);
-    }
-
-    @Transactional
-    public BaiVietAdminResponseDTO updateBaiViet(UUID id, BaiVietAdminRequestDTO request) {
-        BaiViet existing = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
-
-        Users user = usersRepository.findById(request.getUsersId())
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
-
-        baiVietMapper.updateEntity(existing, request);
-        existing.setUsers(user);
-        existing.setUpdatedAt(LocalDateTime.now());
-
-        BaiViet updated = baiVietRepository.save(existing);
-        return baiVietMapper.toResponseDTO(updated);
-    }
-
-    public BaiVietAdminResponseDTO getBaiVietById(UUID id) {
-        BaiViet baiViet = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
-        return baiVietMapper.toResponseDTO(baiViet);
-    }
-
-    public List<BaiVietAdminResponseDTO.BaiVietView> getALlBaiViet() {
-        return baiVietRepository.findAllBaiVietView();
+        HocKi entity = hocKiMapper.toEntity(request);
+        HocKi saved = hocKiAdminRepository.save(entity);
+        return hocKiMapper.toResponseDTO(saved);
     }
 
     @Transactional
-    public void deleteBaiViet(UUID id) {
-        BaiViet bv = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
+    public HocKiAdminResponseDTO updateHocKi(UUID id, HocKiAdminRequestDTO request) {
+        HocKi existing = hocKiAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Học kì không tồn tại"));
 
-        baiVietRepository.delete(bv);
+        if (!existing.getMaHocKi().equals(request.getMaHocKi())
+                && hocKiAdminRepository.existsByMaHocKi(request.getMaHocKi())) {
+            throw new SimpleMessageException("Mã học kì đã tồn tại");
+        }
+
+        if (request.getNgayBatDau() != null && request.getNgayKetThuc() != null
+                && request.getNgayBatDau().isAfter(request.getNgayKetThuc())) {
+            throw new SimpleMessageException("Ngày bắt đầu phải nhỏ hơn ngày kết thúc");
+        }
+
+        hocKiMapper.updateEntity(existing, request);
+        HocKi updated = hocKiAdminRepository.save(existing);
+        return hocKiMapper.toResponseDTO(updated);
+    }
+
+    public HocKiAdminResponseDTO getHocKiById(UUID id) {
+        HocKi hocKi = hocKiAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Học kì không tồn tại"));
+        return hocKiMapper.toResponseDTO(hocKi);
+    }
+
+    public List<HocKiAdminResponseDTO.HocKiView> getAllHocKi() {
+        return hocKiAdminRepository.findAllProjectedBy();
+    }
+
+    @Transactional
+    public void deleteHocKi(UUID id) {
+        HocKi hk = hocKiAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Học kì không tồn tại"));
+
+        List<LopHocPhan> lopHocPhans = lopHocPhanAdminRepository.findAllByHocKiId(id);
+        if (!lopHocPhans.isEmpty()) {
+            lopHocPhanAdminRepository.deleteAll(lopHocPhans);
+        }
+
+        List<HocPhi> hocPhis = hocPhiAdminRepository.findAllByHocKiId(id);
+        if (!hocPhis.isEmpty()) {
+            hocPhiAdminRepository.deleteAll(hocPhis);
+        }
+
+        hocKiAdminRepository.delete(hk);
     }
 
     @Transactional
@@ -82,14 +97,9 @@ public class HocKiAdminService {
             return;
         }
         try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
-
-            // }
-            // }
-            hocKiAdminRepository.deleteAllByIdIn(ids);
-
+            for (UUID id : ids) {
+                deleteHocKi(id);
+            }
         } catch (Exception e) {
             throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
         }

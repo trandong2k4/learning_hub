@@ -13,11 +13,14 @@ import com.university.dto.request.student.ThongBaoRequest;
 import com.university.dto.response.student.ThongBaoResponse;
 import com.university.service.student.ThongBaoService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import com.university.annotation.RequirePermission;
 
 @RestController
 @RequestMapping("/api/student/thongbao")
 @RequiredArgsConstructor
+@RequirePermission("STU_NOTIFY_VIEW")
 public class ThongBaoController {
 
     private final ThongBaoService thongBaoService;
@@ -28,7 +31,7 @@ public class ThongBaoController {
     }
 
     @PatchMapping("/da-doc")
-    public ResponseEntity<Void> danhDauDaDoc(@RequestBody ThongBaoRequest request) {
+    public ResponseEntity<Void> danhDauDaDoc(@Valid @RequestBody ThongBaoRequest request) {
         thongBaoService.danhDauDaDoc(request);
         return ResponseEntity.noContent().build();
     }

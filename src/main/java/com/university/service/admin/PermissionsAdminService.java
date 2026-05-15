@@ -18,8 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Map;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -88,30 +91,38 @@ public class PermissionsAdminService {
 
     private final RolePermissionsAdminRepository r;
 
-    public void delete(UUID permissionsId) {
+    private void checkCanDelete(UUID permissionsId) {
         if (r.existsByPermissionsId(permissionsId)) {
-            throw new SimpleMessageException(
-                    "Permissions đang gán cho Role trong bảng RolePermissions, không thể xóa");
+            throw new SimpleMessageException("Quyền đang được gán cho vai trò, không thể xóa");
         }
+    }
+
+    public void delete(UUID permissionsId) {
+        checkCanDelete(permissionsId);
         permissionsAdminRepository.deleteById(permissionsId);
     }
 
     @Transactional
-    public void deleteAllByList(List<UUID> ids) {
+    public List<String> deleteAllByList(List<UUID> ids) {
         if (ids == null || ids.isEmpty()) {
-            return;
+            return new java.util.ArrayList<>();
         }
-        try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
 
-            // }
-            // }
-            permissionsAdminRepository.deleteAllByIdIn(ids);
+        Set<UUID> assignedIds = r.findAssignedPermissionsIds(ids);
+        Map<UUID, String> permissionCodes = permissionsAdminRepository.findPermissionCodesByIds(ids).stream()
+                .collect(Collectors.toMap(row -> (UUID) row[0], row -> (String) row[1]));
 
-        } catch (Exception e) {
-            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        List<UUID> deletable = ids.stream()
+                .filter(id -> !assignedIds.contains(id))
+                .toList();
+        List<String> cannotDelete = assignedIds.stream()
+                .map(id -> permissionCodes.getOrDefault(id, "Unknown"))
+                .toList();
+
+        if (!deletable.isEmpty()) {
+            permissionsAdminRepository.deleteAllByIdIn(deletable);
         }
+
+        return cannotDelete;
     }
 }

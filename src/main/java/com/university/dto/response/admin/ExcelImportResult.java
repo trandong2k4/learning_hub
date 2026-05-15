@@ -17,4 +17,9 @@ public class ExcelImportResult {
     private int successCount;
     private int errorCount;
     private List<String> errors = new ArrayList<>();
+    private String message;
+
+    public static ExcelImportResult empty() {
+        return new ExcelImportResult();
+    }
 }

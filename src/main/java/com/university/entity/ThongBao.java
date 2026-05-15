@@ -38,6 +38,7 @@ public class ThongBao {
     @Column(length = 50, nullable = false)
     private String tieuDe;
 
+    @Column(columnDefinition = "TEXT")
     private String noiDung;
 
     private String fileThongBao;
@@ -53,6 +54,16 @@ public class ThongBao {
     private Users users;
 
     @OneToMany(mappedBy = "thongBao", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ThongBaoNguoiDung> dThongBaos = new ArrayList<>();
+    private List<ThongBaoNguoiDung> nguoiNhanList = new ArrayList<>();
 
+    // 🔥 Helper method
+    public void addNguoiNhan(ThongBaoNguoiDung tbnd) {
+        nguoiNhanList.add(tbnd);
+        tbnd.setThongBao(this);
+    }
+
+    public void removeNguoiNhan(ThongBaoNguoiDung tbnd) {
+        nguoiNhanList.remove(tbnd);
+        tbnd.setThongBao(null);
+    }
 }

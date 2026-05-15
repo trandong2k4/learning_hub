@@ -1,16 +1,15 @@
 package com.university.service.admin;
 
-import com.university.dto.request.admin.BaiVietAdminRequestDTO;
-import com.university.dto.response.admin.BaiVietAdminResponseDTO;
-import com.university.entity.BaiViet;
-import com.university.entity.Users;
+import com.university.dto.request.admin.DiemThanhPhanAdminRequestDTO;
+import com.university.dto.response.admin.DiemThanhPhanAdminResponseDTO;
+import com.university.entity.CotDiem;
+import com.university.entity.DangKyTinChi;
+import com.university.entity.DiemThanhPhan;
 import com.university.exception.SimpleMessageException;
-import com.university.mapper.admin.BaiVietAdminMapper;
-import com.university.repository.admin.BaiVietAdminRepository;
+import com.university.mapper.admin.DiemThanhPhanAdminMapper;
+import com.university.repository.admin.CotDiemAdminRepository;
+import com.university.repository.admin.DangKyTinChiAdminRepository;
 import com.university.repository.admin.DiemThanhPhanAdminRepository;
-import com.university.repository.admin.UsersAdminRepository;
-
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,72 +23,74 @@ import java.util.UUID;
 public class DiemThanhPhanAdminService {
 
     private final DiemThanhPhanAdminRepository diemThanhPhanAdminRepository;
-    private final BaiVietAdminRepository baiVietRepository;
-    private final UsersAdminRepository usersRepository;
-    private final BaiVietAdminMapper baiVietMapper;
+    private final DangKyTinChiAdminRepository dangKyTinChiAdminRepository;
+    private final CotDiemAdminRepository cotDiemAdminRepository;
+    private final DiemThanhPhanAdminMapper diemThanhPhanMapper;
 
     @Transactional
-    public BaiVietAdminResponseDTO createBaiViet(BaiVietAdminRequestDTO request) {
-        Users user = usersRepository.findById(request.getUsersId())
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
+    public DiemThanhPhanAdminResponseDTO create(DiemThanhPhanAdminRequestDTO request) {
+        if (request == null) {
+            throw new SimpleMessageException("Dữ liệu không hợp lệ");
+        }
 
-        BaiViet baiViet = baiVietMapper.toEntity(request);
-        baiViet.setUsers(user);
-        baiViet.setCreatedAt(LocalDateTime.now());
-        baiViet.setUpdatedAt(LocalDateTime.now());
+        DangKyTinChi dangKy = dangKyTinChiAdminRepository.findById(request.getDangKyTinChiId())
+                .orElseThrow(() -> new SimpleMessageException("Đăng ký tín chỉ không tồn tại"));
 
-        BaiViet saved = baiVietRepository.save(baiViet);
-        return baiVietMapper.toResponseDTO(saved);
+        CotDiem cotDiem = cotDiemAdminRepository.findById(request.getCotDiemId())
+                .orElseThrow(() -> new SimpleMessageException("Cột điểm không tồn tại"));
+
+        DiemThanhPhan entity = diemThanhPhanMapper.toEntity(request);
+        entity.setDangKyTinChi(dangKy);
+        entity.setCotDiem(cotDiem);
+        entity.setUpdatedAt(LocalDateTime.now());
+
+        DiemThanhPhan saved = diemThanhPhanAdminRepository.save(entity);
+        return diemThanhPhanMapper.toResponseDTO(saved);
     }
 
     @Transactional
-    public BaiVietAdminResponseDTO updateBaiViet(UUID id, BaiVietAdminRequestDTO request) {
-        BaiViet existing = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
+    public DiemThanhPhanAdminResponseDTO update(UUID id, DiemThanhPhanAdminRequestDTO request) {
+        DiemThanhPhan existing = diemThanhPhanAdminRepository.findById(id)
+                .orElseThrow(() -> new SimpleMessageException("Điểm thành phần không tồn tại"));
 
-        Users user = usersRepository.findById(request.getUsersId())
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
+        DangKyTinChi dangKy = dangKyTinChiAdminRepository.findById(request.getDangKyTinChiId())
+                .orElseThrow(() -> new SimpleMessageException("Đăng ký tín chỉ không tồn tại"));
 
-        baiVietMapper.updateEntity(existing, request);
-        existing.setUsers(user);
+        CotDiem cotDiem = cotDiemAdminRepository.findById(request.getCotDiemId())
+                .orElseThrow(() -> new SimpleMessageException("Cột điểm không tồn tại"));
+
+        diemThanhPhanMapper.updateEntity(existing, request);
+        existing.setDangKyTinChi(dangKy);
+        existing.setCotDiem(cotDiem);
         existing.setUpdatedAt(LocalDateTime.now());
 
-        BaiViet updated = baiVietRepository.save(existing);
-        return baiVietMapper.toResponseDTO(updated);
+        DiemThanhPhan updated = diemThanhPhanAdminRepository.save(existing);
+        return diemThanhPhanMapper.toResponseDTO(updated);
     }
 
-    public BaiVietAdminResponseDTO getBaiVietById(UUID id) {
-        BaiViet baiViet = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
-        return baiVietMapper.toResponseDTO(baiViet);
+    public DiemThanhPhanAdminResponseDTO getById(UUID id) {
+        DiemThanhPhan entity = diemThanhPhanAdminRepository.findById(id)
+                .orElseThrow(() -> new SimpleMessageException("Điểm thành phần không tồn tại"));
+        return diemThanhPhanMapper.toResponseDTO(entity);
     }
 
-    public List<BaiVietAdminResponseDTO.BaiVietView> getALlBaiViet() {
-        return baiVietRepository.findAllBaiVietView();
+    public List<DiemThanhPhanAdminResponseDTO.DiemThanhPhanView> getAllView() {
+        return diemThanhPhanAdminRepository.findAllView();
     }
 
     @Transactional
-    public void deleteBaiViet(UUID id) {
-        BaiViet bv = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
-
-        baiVietRepository.delete(bv);
+    public void delete(UUID id) {
+        if (!diemThanhPhanAdminRepository.existsById(id)) {
+            throw new SimpleMessageException("Điểm thành phần không tồn tại");
+        }
+        diemThanhPhanAdminRepository.deleteById(id);
     }
 
     @Transactional
     public void deleteAllByList(List<UUID> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return;
-        }
+        if (ids == null || ids.isEmpty()) return;
         try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
-
-            // }
-            // }
             diemThanhPhanAdminRepository.deleteAllByIdIn(ids);
-
         } catch (Exception e) {
             throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
         }

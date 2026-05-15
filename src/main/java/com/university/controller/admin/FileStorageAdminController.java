@@ -1,5 +1,6 @@
 package com.university.controller.admin;
 
+import com.university.annotation.RequirePermission;
 import com.university.dto.request.admin.FileStorageAdminRequestDTO;
 import com.university.dto.response.admin.FileStorageAdminResponseDTO;
 import com.university.service.admin.FileStorageAdminService;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/file-storage")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_POST_VIEW")
 public class FileStorageAdminController {
 
     private final FileStorageAdminService fileStorageService;

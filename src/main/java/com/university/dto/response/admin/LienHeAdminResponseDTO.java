@@ -15,6 +15,8 @@ public class LienHeAdminResponseDTO {
     private String email;
     private String soDienThoai;
     private UUID khoaId;
+    private String maKhoa;
+    private String tenKhoa;
 
     public interface LienHeView {
         UUID getId();

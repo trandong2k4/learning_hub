@@ -30,7 +30,7 @@ public class FileStorage {
 
   private Float fileSize;
 
-  @Column(nullable = false)
+  @Column(nullable = false, columnDefinition = "TEXT")
   private String fileUrl;
 
   @CreationTimestamp

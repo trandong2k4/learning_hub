@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -36,6 +34,7 @@ public class Truong {
     @Column(length = 30)
     private String nguoiDaiDien;
 
-    @OneToMany(mappedBy = "truong", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Khoa> dKhoas = new ArrayList<>();
+    // @OneToMany(mappedBy = "truong", fetch = FetchType.LAZY, cascade =
+    // CascadeType.ALL, orphanRemoval = true)
+    // private List<Khoa> dKhoas = new ArrayList<>();
 }

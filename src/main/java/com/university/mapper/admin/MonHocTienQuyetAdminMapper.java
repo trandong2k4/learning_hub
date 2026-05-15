@@ -52,9 +52,15 @@ public class MonHocTienQuyetAdminMapper {
         dto.setId(entity.getId());
         dto.setMaMonHoc(entity.getMaMonHoc());
 
-        // Ánh xạ ID từ thực thể MonHoc (quan hệ) sang DTO
         if (entity.getMonHoc() != null) {
             dto.setMonHocId(entity.getMonHoc().getId());
+            dto.setMaMonHoc(entity.getMonHoc().getMaMonHoc());
+            dto.setTenMonHoc(entity.getMonHoc().getTenMonHoc());
+        }
+        if (entity.getMonTienQuyet() != null) {
+            dto.setMonTienQuyetId(entity.getMonTienQuyet().getId());
+            dto.setMaTienQuyet(entity.getMonTienQuyet().getMaMonHoc());
+            dto.setTenMonTienQuyet(entity.getMonTienQuyet().getTenMonHoc());
         }
 
         return dto;

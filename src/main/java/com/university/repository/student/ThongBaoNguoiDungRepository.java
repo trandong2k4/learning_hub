@@ -1,5 +1,6 @@
 package com.university.repository.student;
 
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
@@ -29,14 +30,14 @@ public interface ThongBaoNguoiDungRepository extends JpaRepository<ThongBaoNguoi
             """)
     List<ThongBaoResponse> findThongBaoByUsersId(@Param("usersId") UUID usersId);
 
-    Optional<ThongBaoNguoiDung> findByUsersIdAndThongBaoId(UUID usersId, UUID thongBaoId);
-
     Optional<ThongBaoNguoiDung> findByIdAndUsersId(UUID id, UUID usersId);
 
+    @Modifying
     @Query("""
-            SELECT tnd
-            FROM ThongBaoNguoiDung tnd
-            WHERE tnd.users.id = :usersId AND tnd.daNhan = false
+            UPDATE ThongBaoNguoiDung tnd
+            SET tnd.daNhan = true
+            WHERE tnd.users.id = :usersId
+              AND (tnd.daNhan = false OR tnd.daNhan IS NULL)
             """)
-    List<ThongBaoNguoiDung> findByUsersIdAndDaNhanFalse(@Param("usersId") UUID usersId);
+    void markAllAsReadByUsersId(@Param("usersId") UUID usersId);
 }

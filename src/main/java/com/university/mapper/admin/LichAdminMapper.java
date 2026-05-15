@@ -18,37 +18,20 @@ public class LichAdminMapper {
         Lich entity = new Lich();
         entity.setNgayHoc(dto.getNgayHoc());
         entity.setGhiChu(dto.getGhiChu());
-
-        // Thiết lập thời gian khởi tạo
-        entity.setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt() : LocalDateTime.now());
-        entity.setUpdatedAt(dto.getUpdatedAt() != null ? dto.getUpdatedAt() : LocalDateTime.now());
-
-        // Các quan hệ: gioHocId, phongId, lopHocPhanId sẽ được gán Object trong Service
-
+        entity.setCreatedAt(LocalDateTime.now());
+        entity.setUpdatedAt(LocalDateTime.now());
         return entity;
     }
 
-    /**
-     * Cập nhật Entity hiện tại từ dữ liệu trong Request DTO
-     */
     public void updateEntity(Lich entity, LichAdminRequestDTO dto) {
         if (dto == null || entity == null) {
             return;
         }
-
         entity.setNgayHoc(dto.getNgayHoc());
         entity.setGhiChu(dto.getGhiChu());
-
-        // Luôn cập nhật thời gian sửa đổi mới nhất
         entity.setUpdatedAt(LocalDateTime.now());
-
-        // Lưu ý: Việc thay đổi Phòng, Giờ hoặc Lớp học phần nên thực hiện tìm kiếm
-        // Object ở Service
     }
 
-    /**
-     * Chuyển từ Entity sang Response DTO để trả về cho Client
-     */
     public LichAdminResponseDTO toResponseDTO(Lich entity) {
         if (entity == null) {
             return null;
@@ -61,17 +44,31 @@ public class LichAdminMapper {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
 
-        // Ánh xạ ID từ các thực thể quan hệ
         if (entity.getGioHoc() != null) {
             dto.setGioHocId(entity.getGioHoc().getId());
+            dto.setGioHoc(new LichAdminResponseDTO.GioHocInfo(
+                    entity.getGioHoc().getId(),
+                    entity.getGioHoc().getMaGioHoc(),
+                    entity.getGioHoc().getTenGioHoc(),
+                    entity.getGioHoc().getThoiGianBatDau() != null ? entity.getGioHoc().getThoiGianBatDau().toString() : null,
+                    entity.getGioHoc().getThoiGianKetThuc() != null ? entity.getGioHoc().getThoiGianKetThuc().toString() : null));
         }
 
         if (entity.getPhong() != null) {
             dto.setPhongId(entity.getPhong().getId());
+            dto.setPhong(new LichAdminResponseDTO.PhongInfo(
+                    entity.getPhong().getId(),
+                    entity.getPhong().getMaPhong(),
+                    entity.getPhong().getTenPhong()));
         }
 
         if (entity.getLopHocPhan() != null) {
             dto.setLopHocPhanId(entity.getLopHocPhan().getId());
+            dto.setLopHocPhan(new LichAdminResponseDTO.LopHocPhanInfo(
+                    entity.getLopHocPhan().getId(),
+                    entity.getLopHocPhan().getMaLopHocPhan(),
+                    entity.getLopHocPhan().getMonHoc() != null ? entity.getLopHocPhan().getMonHoc().getTenMonHoc() : null,
+                    entity.getLopHocPhan().getHocKi() != null ? entity.getLopHocPhan().getHocKi().getTenHocKi() : null));
         }
 
         return dto;

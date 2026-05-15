@@ -30,7 +30,7 @@ public class TruongAdminRequestDTO {
     private String moTa;
 
     @ExcelProperty(index = 4)
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate ngayThanhLap;
 
     @ExcelProperty(index = 5)

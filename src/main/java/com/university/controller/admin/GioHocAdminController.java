@@ -1,21 +1,24 @@
 package com.university.controller.admin;
 
+import com.university.annotation.RequirePermission;
 import com.university.dto.request.admin.GioHocAdminRequestDTO;
 import com.university.dto.response.admin.GioHocAdminResponseDTO;
 import com.university.service.admin.GioHocAdminService;
 
 import jakarta.validation.Valid;
-import jakarta.websocket.server.PathParam;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/gio-hoc")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_SCHEDULE_MANAGE_VIEW")
 public class GioHocAdminController {
 
     private final GioHocAdminService gioHocAdminService;
@@ -31,7 +34,7 @@ public class GioHocAdminController {
     }
 
     @GetMapping("/search-name")
-    public ResponseEntity<List<GioHocAdminResponseDTO>> getById(@PathParam("keyword") String keyword) {
+    public ResponseEntity<List<GioHocAdminResponseDTO>> searchByName(@RequestParam("keyword") String keyword) {
         return ResponseEntity.ok(gioHocAdminService.getByTenGioHoc(keyword));
     }
 
@@ -56,5 +59,10 @@ public class GioHocAdminController {
     public ResponseEntity<Void> deleteList(@RequestParam List<UUID> ids) {
         gioHocAdminService.deleteAllByList(ids);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/import-excel")
+    public ResponseEntity<?> importExcel(@RequestParam("file") MultipartFile file) throws IOException {
+        return ResponseEntity.ok(gioHocAdminService.importFromExcel(file));
     }
 }

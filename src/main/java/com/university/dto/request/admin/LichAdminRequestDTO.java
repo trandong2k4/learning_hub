@@ -14,14 +14,9 @@ import lombok.*;
 @AllArgsConstructor
 public class LichAdminRequestDTO {
 
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime ngayHoc;
     private String ghiChu;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
-    private LocalDateTime createdAt;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
-    private LocalDateTime updatedAt;
-
     @NotNull(message = "Id giờ học không được để trống")
     private UUID gioHocId;
     @NotNull(message = "Id phòng học không được để trống")

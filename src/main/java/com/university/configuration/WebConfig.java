@@ -11,7 +11,6 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${FRONTEND_URL}")
     private String fontendURL;
 
-    @SuppressWarnings("null")
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")

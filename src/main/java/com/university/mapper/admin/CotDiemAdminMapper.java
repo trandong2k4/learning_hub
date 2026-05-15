@@ -54,8 +54,10 @@ public class CotDiemAdminMapper {
         dto.setLoai(entity.getLoai());
         dto.setThuTuHienThi(entity.getThuTuHienThi());
 
-        // Nếu trong Response DTO của bạn sau này có thêm field lopHocPhanId,
-        // hãy bổ sung: dto.setLopHocPhanId(entity.getLopHocPhan().getId());
+        if (entity.getLopHocPhan() != null) {
+            dto.setLopHocPhanId(entity.getLopHocPhan().getId());
+            dto.setMaLopHocPhan(entity.getLopHocPhan().getMaLopHocPhan());
+        }
 
         return dto;
     }

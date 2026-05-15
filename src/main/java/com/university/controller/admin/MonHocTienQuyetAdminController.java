@@ -1,8 +1,9 @@
 package com.university.controller.admin;
 
-import com.university.dto.request.admin.BaiVietAdminRequestDTO;
-import com.university.dto.response.admin.BaiVietAdminResponseDTO;
-import com.university.service.admin.BaiVietAdminService;
+import com.university.annotation.RequirePermission;
+import com.university.dto.request.admin.MonHocTienQuyetAdminRequestDTO;
+import com.university.dto.response.admin.MonHocTienQuyetAdminResponseDTO;
+import com.university.service.admin.MonHocTienQuyetAdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,39 +16,51 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/mon-hoc-tien-quyet")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_SUBJECT_VIEW")
 public class MonHocTienQuyetAdminController {
 
-    private final BaiVietAdminService baiVietService;
+    private final MonHocTienQuyetAdminService monHocTienQuyetService;
 
     @PostMapping
-    public ResponseEntity<BaiVietAdminResponseDTO> createBaiViet(
-            @Valid @RequestBody BaiVietAdminRequestDTO request) {
-        BaiVietAdminResponseDTO response = baiVietService.createBaiViet(request);
+    public ResponseEntity<MonHocTienQuyetAdminResponseDTO> create(
+            @Valid @RequestBody MonHocTienQuyetAdminRequestDTO request) {
+        MonHocTienQuyetAdminResponseDTO response = monHocTienQuyetService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<BaiVietAdminResponseDTO> updateBaiViet(
+    public ResponseEntity<MonHocTienQuyetAdminResponseDTO> update(
             @PathVariable UUID id,
-            @Valid @RequestBody BaiVietAdminRequestDTO request) {
-        BaiVietAdminResponseDTO response = baiVietService.updateBaiViet(id, request);
+            @Valid @RequestBody MonHocTienQuyetAdminRequestDTO request) {
+        MonHocTienQuyetAdminResponseDTO response = monHocTienQuyetService.update(id, request);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaiVietAdminResponseDTO> getBaiViet(@PathVariable UUID id) {
-        BaiVietAdminResponseDTO response = baiVietService.getBaiVietById(id);
+    public ResponseEntity<MonHocTienQuyetAdminResponseDTO> getById(@PathVariable UUID id) {
+        MonHocTienQuyetAdminResponseDTO response = monHocTienQuyetService.getById(id);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping
-    public ResponseEntity<List<BaiVietAdminResponseDTO.BaiVietView>> getAllBaiViet() {
-        return ResponseEntity.ok(baiVietService.getALlBaiViet());
+    public ResponseEntity<List<MonHocTienQuyetAdminResponseDTO>> getAll() {
+        return ResponseEntity.ok(monHocTienQuyetService.getAll());
+    }
+
+    @GetMapping("/by-mon-hoc/{monHocId}")
+    public ResponseEntity<List<MonHocTienQuyetAdminResponseDTO>> getByMonHocId(@PathVariable UUID monHocId) {
+        return ResponseEntity.ok(monHocTienQuyetService.getByMonHocId(monHocId));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBaiViet(@PathVariable UUID id) {
-        baiVietService.deleteBaiViet(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        monHocTienQuyetService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/delete/by-list")
+    public ResponseEntity<String> deleteList(@RequestBody List<UUID> ids) {
+        monHocTienQuyetService.deleteAllByList(ids);
+        return ResponseEntity.ok("Xóa thành công " + ids.size() + " mục");
     }
 }

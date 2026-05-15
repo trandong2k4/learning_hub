@@ -1,5 +1,6 @@
 package com.university.controller.admin;
 
+import com.university.annotation.RequirePermission;
 import com.university.dto.request.admin.NganhAdminRequestDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.NganhAdminResponseDTO;
@@ -19,6 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/nganh")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_NGANH_VIEW")
 public class NganhAdminController {
 
     private final NganhAdminService nganhAdminService;

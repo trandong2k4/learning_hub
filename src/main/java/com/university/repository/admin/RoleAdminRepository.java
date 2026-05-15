@@ -52,6 +52,8 @@ public interface RoleAdminRepository extends JpaRepository<Role, UUID> {
 
     boolean existsByMaRole(String maRole);
 
+    Optional<Role> findFirstByMaRoleIgnoreCase(String maRole);
+
     @Query("""
             SELECT COUNT(r)
             FROM Role r

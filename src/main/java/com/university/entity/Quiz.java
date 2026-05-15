@@ -46,6 +46,10 @@ public class Quiz {
 
     private Integer thoiGianLam;
 
+    private Integer soLanLam;
+
+    private Boolean trinhTrang;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -57,6 +61,9 @@ public class Quiz {
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QuizExercise> dQuizExercises = new ArrayList<>();
 
-    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL)
     private List<QuizAttempt> dQuizAttempts = new ArrayList<>();
+
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<QuizQuestions> dQuizQuestions = new ArrayList<>();
 }

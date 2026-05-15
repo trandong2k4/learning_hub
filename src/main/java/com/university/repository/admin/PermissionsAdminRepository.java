@@ -70,6 +70,9 @@ public interface PermissionsAdminRepository extends JpaRepository<Permissions, U
         @Query("SELECT p.maPermissions FROM Permissions p")
         List<String> findAllMaPermissions();
 
+        @Query("SELECT p.id, p.maPermissions FROM Permissions p WHERE p.id IN :ids")
+        List<Object[]> findPermissionCodesByIds(@Param("ids") List<UUID> ids);
+
         @Query("""
                         SELECT COUNT(p)
                         FROM Permissions p
@@ -83,4 +86,9 @@ public interface PermissionsAdminRepository extends JpaRepository<Permissions, U
         void deleteAllPermissions();
 
         void deleteAllByIdIn(List<UUID> ids);
+
+        Optional<Permissions> findByMaPermissions(String maPermissions);
+
+        @Query("SELECT p FROM Permissions p WHERE p.maPermissions IN :codes")
+        List<Permissions> findByMaPermissionsIn(@Param("codes") List<String> codes);
 }

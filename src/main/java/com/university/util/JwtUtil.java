@@ -1,142 +1,85 @@
 package com.university.util;
 
+import com.university.security.CustomUserDetails;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 @Component
 public class JwtUtil {
 
-    private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.expiration:900000}") // 15 phút cho Access Token
+    @Value("${jwt.expiration:900000}")
     private long accessTokenExpirationMs;
 
-    @Value("${jwt.refresh-expiration:604800000}") // 7 ngày cho Refresh Token (604800000 ms)
-    private long refreshTokenExpirationMs;
-
     private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secret);
-        return Keys.hmacShaKeyFor(keyBytes);
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 
-    // Tạo Access Token (ngắn hạn)
-    public String generateAccessToken(UserDetails userDetails, List<String> permissions) {
+    public String generateAccessToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
 
-        // roles
-        claims.put("roles", userDetails.getAuthorities()
-                .stream()
-                .map(auth -> auth.getAuthority())
-                .toList());
-
-        claims.put("permissions", permissions);
-
-        claims.put("tokenType", "access");
+        if (userDetails instanceof CustomUserDetails customUser) {
+            claims.put("userId", customUser.getUserId().toString());
+            List<String> roles = customUser.getAuthorities().stream()
+                    .map(a -> a.getAuthority())
+                    .filter(auth -> auth.startsWith("ROLE_"))
+                    .toList();
+            claims.put("roles", roles);
+        } else {
+            claims.put("roles", userDetails.getAuthorities().stream()
+                    .map(a -> a.getAuthority()).toList());
+        }
 
         return Jwts.builder()
                 .claims(claims)
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpirationMs))
-                .issuer("university-app")
-                .audience().add("university-api").and()
                 .signWith(getSigningKey())
                 .compact();
-    }
-
-    // Tạo Refresh Token (dài hạn)
-    public String generateRefreshToken(String username) {
-        return Jwts.builder()
-                .subject(username)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + refreshTokenExpirationMs))
-                .issuer("university-app")
-                .claim("tokenType", "refresh")
-                .signWith(getSigningKey())
-                .compact();
-    }
-
-    public List<String> extractPermissions(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("permissions", List.class);
     }
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
+    public String extractUserId(String token) {
+        return extractClaim(token, c -> c.get("userId", String.class));
+    }
+    
+    public List<String> extractRoles(String token) {
+        return extractClaim(token, c -> c.get("roles", List.class));
     }
 
-    private Claims extractAllClaims(String token) {
-        try {
-            return Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .requireIssuer("university-app")
-                    .clockSkewSeconds(60)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-        } catch (ExpiredJwtException e) {
-            return e.getClaims();
-        }
-    }
-
-    public boolean isAccessToken(String token) {
-        try {
-            Claims claims = extractAllClaims(token);
-            return "access".equals(claims.get("tokenType"));
-        } catch (Exception e) {
-            return false;
-        }
+    public List<String> extractPermissions(String token) {
+        return extractClaim(token, c -> c.get("permissions", List.class));
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        try {
-            final String username = extractUsername(token);
-            return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
-        } catch (Exception e) {
-            logger.debug("Invalid JWT token: {}", e.getMessage());
-            return false;
-        }
+        return extractUsername(token).equals(userDetails.getUsername())
+                && !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+        return extractClaim(token, Claims::getExpiration).before(new Date());
     }
 
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+    private <T> T extractClaim(String token, Function<Claims, T> resolver) {
+        return resolver.apply(
+                Jwts.parser()
+                        .verifyWith(getSigningKey())
+                        .build()
+                        .parseSignedClaims(token)
+                        .getPayload());
     }
-
-    public boolean isRefreshTokenValid(String token) {
-        try {
-            Claims claims = extractAllClaims(token);
-
-            return "refresh".equals(claims.get("tokenType"))
-                    && !isTokenExpired(token);
-
-        } catch (Exception e) {
-            logger.debug("Invalid refresh token: {}", e.getMessage());
-            return false;
-        }
-    }
-
 }

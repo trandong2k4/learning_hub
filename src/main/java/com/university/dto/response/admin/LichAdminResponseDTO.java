@@ -17,16 +17,47 @@ public class LichAdminResponseDTO {
     @JsonFormat(pattern = "dd/MM/yyyy")
     private LocalDateTime ngayHoc;
     private String ghiChu;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+    @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")
     private LocalDateTime createdAt;
-    @JsonFormat(pattern = "dd/MM/yyyy : hh:mm:ss")
+    @JsonFormat(pattern = "dd/MM/yyyy HH:mm:ss")
     private LocalDateTime updatedAt;
     private UUID gioHocId;
+    private GioHocInfo gioHoc;
     private UUID phongId;
+    private PhongInfo phong;
     private UUID lopHocPhanId;
+    private LopHocPhanInfo lopHocPhan;
 
-    public interface LichView {
-        UUID getId();
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class GioHocInfo {
+        private UUID id;
+        private String maGioHoc;
+        private String tenGioHoc;
+        private String gioBatDau;
+        private String gioKetThuc;
     }
 
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class PhongInfo {
+        private UUID id;
+        private String maPhong;
+        private String tenPhong;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class LopHocPhanInfo {
+        private UUID id;
+        private String maLopHocPhan;
+        private String tenMonHoc;
+        private String tenHocKi;
+    }
 }

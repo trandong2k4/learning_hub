@@ -1,74 +1,106 @@
 package com.university.config;
 
+import com.university.security.CustomUserDetails;
+import com.university.service.PermissionsCacheService;
 import com.university.util.JwtUtil;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
-    private UserDetailsService userDetailsService;
+        private final JwtUtil jwtUtil;
+        private final PermissionsCacheService permissionsCacheService;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
-    }
+        @Override
+        protected void doFilterInternal(HttpServletRequest request,
+                        HttpServletResponse response,
+                        FilterChain filterChain)
+                        throws ServletException, IOException {
 
-    public void setUserDetailsService(UserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
-    }
+                String header = request.getHeader("Authorization");
 
-    @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain) throws ServletException, IOException {
+                if (header != null && header.startsWith("Bearer ")) {
+                        String token = header.substring(7);
 
-        try {
-            String jwt = getJwtFromRequest(request);
+                        // Kiểm tra cấu trúc JWT (tránh lỗi 500 khi gửi UUID của Refresh Token vào đây)
+                        long dotCount = token.chars().filter(ch -> ch == '.').count();
+                        if (dotCount != 2) {
+                                log.warn("JWT error: Invalid structure at URI: {}", request.getRequestURI());
+                                filterChain.doFilter(request, response);
+                                return;
+                        }
 
-            if (StringUtils.hasText(jwt)) {
-                String username = jwtUtil.extractUsername(jwt);
+                        try {
+                                String username = jwtUtil.extractUsername(token);
+                                String userIdStr = jwtUtil.extractUserId(token);
+                                UUID userId = UUID.fromString(userIdStr);
+                                List<String> roles = jwtUtil.extractRoles(token);
 
-                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                                // LẤY PERMISSIONS TỪ REDIS THÔNG QUA PERMISSIONS CACHE SERVICE
+                                List<String> permissions = permissionsCacheService.getCachedPermissions(userId);
 
-                    if (jwtUtil.isTokenValid(jwt, userDetails)) {
-                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
+                                // Nếu permissions chưa có trong Redis (cache miss — có thể do vừa bị evict
+                                // khi admin thay đổi phân quyền), đọc lại từ DB và cache lại
+                                if (permissions == null) {
+                                        log.debug("Permissions cache miss for user {}, reloading from DB", userId);
+                                        permissions = permissionsCacheService.reloadAndCachePermissions(userId);
+                                }
 
-                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-                    }
+                                // Tạo danh sách Authorities gồm cả Roles và Permissions
+                                List<SimpleGrantedAuthority> authorities = new java.util.ArrayList<>();
+
+                                // Thêm Roles (Ví dụ: ROLE_ADMIN)
+                                if (roles != null) {
+                                        roles.forEach(role -> {
+                                                String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+                                                authorities.add(new SimpleGrantedAuthority(authority));
+                                        });
+                                }
+
+                                // Thêm Permissions (Ví dụ: USER_CREATE)
+                                if (permissions != null) {
+                                        permissions.forEach(perm -> authorities.add(new SimpleGrantedAuthority(perm)));
+                                }
+
+                                // BUILD USER DETAILS
+                                CustomUserDetails userDetails = new CustomUserDetails(
+                                                userId,
+                                                username,
+                                                "",
+                                                authorities,
+                                                null);
+
+                                // SET VÀO SECURITY CONTEXT
+                                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                                                userDetails,
+                                                null,
+                                                authorities);
+
+                                SecurityContextHolder.getContext().setAuthentication(auth);
+
+                        } catch (Exception e) {
+                                log.error("JWT validation failed: {}", e.getMessage());
+                                SecurityContextHolder.clearContext();
+                        }
                 }
-            }
-        } catch (Exception ex) {
-            log.error("Không thể thiết lập authentication: {}", ex.getMessage());
-        }
 
-        filterChain.doFilter(request, response);
-    }
-
-    private String getJwtFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
+                filterChain.doFilter(request, response);
         }
-        return null;
-    }
 }

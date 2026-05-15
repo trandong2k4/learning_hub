@@ -1,5 +1,6 @@
 package com.university.controller.admin;
 
+import com.university.annotation.RequirePermission;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/permissions")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_PERMISSIONS_VIEW")
 public class PermissionsAdminController {
 
     private final PermissionsAdminService permissionsAdminService;
@@ -64,5 +66,17 @@ public class PermissionsAdminController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         permissionsAdminService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/batch")
+    public ResponseEntity<?> deleteBatch(@RequestBody List<UUID> ids) {
+        List<String> cannotDelete = permissionsAdminService.deleteAllByList(ids);
+        if (cannotDelete.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(java.util.Map.of(
+            "message", "Một số quyền không thể xóa vì đang được gán cho vai trò",
+            "cannotDelete", cannotDelete
+        ));
     }
 }

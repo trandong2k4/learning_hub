@@ -22,4 +22,6 @@ public interface DiemDanhAdminRepository extends JpaRepository<DiemDanh, UUID> {
     List<DiemDanhView> findAllView();
 
     void deleteAllByIdIn(List<UUID> ids);
+
+    boolean existsByHocVienId(UUID hocVienId);
 }

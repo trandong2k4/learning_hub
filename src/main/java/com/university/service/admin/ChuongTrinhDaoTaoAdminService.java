@@ -2,7 +2,6 @@ package com.university.service.admin;
 
 import com.university.dto.request.admin.ChuongTrinhDaoTaoAdminRequestDTO;
 import com.university.dto.response.admin.ChuongTrinhDaoTaoAdminResponseDTO;
-import com.university.entity.ChuongTrinhDaoTao;
 import com.university.entity.MonHoc;
 import com.university.entity.Nganh;
 import com.university.exception.SimpleMessageException;
@@ -10,8 +9,6 @@ import com.university.mapper.admin.ChuongTrinhDaoTaoAdminMapper;
 import com.university.repository.admin.ChuongTrinhDaoTaoAdminRepository;
 import com.university.repository.admin.MonHocAdminRepository;
 import com.university.repository.admin.NganhAdminRepository;
-
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,119 +20,69 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ChuongTrinhDaoTaoAdminService {
 
-    private final ChuongTrinhDaoTaoAdminRepository chuongTrinhDaoTaoRepository;
+    private final ChuongTrinhDaoTaoAdminRepository ctdtRepository;
     private final NganhAdminRepository nganhRepository;
-    private final MonHocAdminRepository monHocAdminRepository;
-    private final ChuongTrinhDaoTaoAdminMapper chuongTrinhDaoTaoMapper;
+    private final MonHocAdminRepository monHocRepository;
+    private final ChuongTrinhDaoTaoAdminMapper ctdtMapper;
 
-    @Transactional
-    public ChuongTrinhDaoTaoAdminResponseDTO createCTDT(ChuongTrinhDaoTaoAdminRequestDTO request) {
-        // Kiểm tra Ngành
-        Nganh nganh = nganhRepository.findById(request.getNganhId())
-                .orElseThrow(() -> new EntityNotFoundException("Ngành học không tồn tại"));
-
-        // Kiểm tra Môn học
-        MonHoc monHoc = monHocAdminRepository.findById(request.getMonHocId())
-                .orElseThrow(() -> new EntityNotFoundException("Môn học không tồn tại"));
-
-        ChuongTrinhDaoTao ctdt = chuongTrinhDaoTaoMapper.toEntity(request);
-        ctdt.setNganh(nganh);
-        ctdt.setMonHoc(monHoc);
-
-        ChuongTrinhDaoTao saved = chuongTrinhDaoTaoRepository.save(ctdt);
-        return chuongTrinhDaoTaoMapper.toResponseDTO(saved);
+    public List<ChuongTrinhDaoTaoAdminResponseDTO> getAll() {
+        return ctdtRepository.findAllDTO();
     }
 
-    @Transactional
-    public List<ChuongTrinhDaoTaoAdminResponseDTO> createListCTDT(List<ChuongTrinhDaoTaoAdminRequestDTO> requests) {
+    public List<ChuongTrinhDaoTaoAdminResponseDTO> getByNganhId(UUID nganhId) {
+        return ctdtRepository.findAllByNganhIdDTO(nganhId);
+    }
 
-        List<ChuongTrinhDaoTao> list = requests.stream().map(req -> {
-
-            Nganh nganh = nganhRepository.findById(req.getNganhId())
-                    .orElseThrow(() -> new EntityNotFoundException("Ngành học không tồn tại"));
-
-            MonHoc monHoc = monHocAdminRepository.findById(req.getMonHocId())
-                    .orElseThrow(() -> new EntityNotFoundException("Môn học không tồn tại"));
-
-            ChuongTrinhDaoTao ctdt = chuongTrinhDaoTaoMapper.toEntity(req);
-            ctdt.setNganh(nganh);
-            ctdt.setMonHoc(monHoc);
-
-            return ctdt;
-
-        }).toList();
-
-        List<ChuongTrinhDaoTao> savedList = chuongTrinhDaoTaoRepository.saveAll(list);
-
-        return savedList.stream()
-                .map(chuongTrinhDaoTaoMapper::toResponseDTO)
+    public List<ChuongTrinhDaoTaoAdminResponseDTO> getAllNganh() {
+        return nganhRepository.getAllDTO().stream()
+                .map(n -> new ChuongTrinhDaoTaoAdminResponseDTO(
+                        n.getId(), n.getId(), n.getMaNganh(), n.getTenNganh(),
+                        null, null, null, null, null))
                 .toList();
     }
 
-    public ChuongTrinhDaoTaoAdminResponseDTO getCTDTById(UUID id) {
-        return chuongTrinhDaoTaoRepository.findById(id)
-                .map(chuongTrinhDaoTaoMapper::toResponseDTO)
-                .orElseThrow(() -> new EntityNotFoundException("Chương trình đào tạo không tồn tại"));
-    }
-
-    public List<ChuongTrinhDaoTaoAdminResponseDTO.ChuongTrinhDaoTaoView> getAllChuongTrinhDaoTao() {
-        return chuongTrinhDaoTaoRepository.findAllProjectedBy();
-    }
-
-    public List<ChuongTrinhDaoTaoAdminResponseDTO.ChuongTrinhDaoTaoView> getALlChuongTrinhDaoTaoByNganh(UUID nganhId) {
-        return chuongTrinhDaoTaoRepository.findAllProjectedByNganh_Id(nganhId);
+    public List<ChuongTrinhDaoTaoAdminResponseDTO> getAllMonHoc() {
+        return monHocRepository.FindAllDTO().stream()
+                .map(m -> new ChuongTrinhDaoTaoAdminResponseDTO(
+                        null, null, null, null,
+                        m.getId(), m.getMaMonHoc(), m.getTenMonHoc(), m.getSoTinChi(), m.getMoTa()))
+                .toList();
     }
 
     @Transactional
-    public ChuongTrinhDaoTaoAdminResponseDTO updateCTDT(UUID id, ChuongTrinhDaoTaoAdminRequestDTO request) {
-        ChuongTrinhDaoTao existing = chuongTrinhDaoTaoRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Chương trình đào tạo không tồn tại"));
+    public ChuongTrinhDaoTaoAdminResponseDTO create(ChuongTrinhDaoTaoAdminRequestDTO dto) {
+        Nganh nganh = nganhRepository.findByMaNganh(dto.getMaNganh())
+                .orElseThrow(() -> new SimpleMessageException("Ngành '" + dto.getMaNganh() + "' không tồn tại!"));
 
-        // Cập nhật Ngành nếu có thay đổi
-        if (request.getNganhId() != null) {
-            Nganh nganh = nganhRepository.findById(request.getNganhId())
-                    .orElseThrow(() -> new EntityNotFoundException("Ngành học không tồn tại"));
-            existing.setNganh(nganh);
+        MonHoc monHoc = monHocRepository.findByMaMonHoc(dto.getMaMonHoc())
+                .orElseThrow(() -> new SimpleMessageException("Môn học '" + dto.getMaMonHoc() + "' không tồn tại!"));
+
+        if (ctdtRepository.existsByNganh_IdAndMonHoc_Id(nganh.getId(), monHoc.getId())) {
+            throw new SimpleMessageException(
+                    "Môn học '" + monHoc.getTenMonHoc() + "' đã tồn tại trong chương trình đào tạo của ngành '" + nganh.getTenNganh() + "'!");
         }
 
-        // Cập nhật Môn học nếu có thay đổi (Quan trọng: Bạn đang thiếu phần này ở code
-        // cũ)
-        if (request.getMonHocId() != null) {
-            MonHoc monHoc = monHocAdminRepository.findById(request.getMonHocId())
-                    .orElseThrow(() -> new EntityNotFoundException("Môn học không tồn tại"));
-            existing.setMonHoc(monHoc);
-        }
-
-        chuongTrinhDaoTaoMapper.updateEntity(existing, request);
-
-        ChuongTrinhDaoTao updated = chuongTrinhDaoTaoRepository.save(existing);
-        return chuongTrinhDaoTaoMapper.toResponseDTO(updated);
+        var entity = ctdtMapper.toEntity(dto);
+        return ctdtMapper.toResponseDTO(ctdtRepository.save(entity));
     }
 
     @Transactional
-    public void deleteCTDT(UUID id) {
-        if (!chuongTrinhDaoTaoRepository.existsById(id)) {
-            throw new EntityNotFoundException("Không tìm thấy chương trình đào tạo để xóa");
-        }
-        chuongTrinhDaoTaoRepository.deleteById(id);
+    public List<ChuongTrinhDaoTaoAdminResponseDTO> createList(List<ChuongTrinhDaoTaoAdminRequestDTO> dtos) {
+        return dtos.stream()
+                .map(this::create)
+                .toList();
     }
 
     @Transactional
-    public void deleteAllByList(List<UUID> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return;
+    public void delete(UUID id) {
+        if (!ctdtRepository.existsById(id)) {
+            throw new SimpleMessageException("Chương trình đào tạo không tồn tại!");
         }
-        try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
+        ctdtRepository.deleteById(id);
+    }
 
-            // }
-            // }
-            chuongTrinhDaoTaoRepository.deleteAllByIdIn(ids);
-
-        } catch (Exception e) {
-            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
-        }
+    @Transactional
+    public void deleteList(List<UUID> ids) {
+        ctdtRepository.deleteAllByIdIn(ids);
     }
 }

@@ -10,8 +10,12 @@ import lombok.*;
 public class MonHocTienQuyetAdminResponseDTO {
 
     private UUID id;
-    private String maMonHoc;
     private UUID monHocId;
+    private String maMonHoc;
+    private String tenMonHoc;
+    private UUID monTienQuyetId;
+    private String maTienQuyet;
+    private String tenMonTienQuyet;
 
     public interface MonHocTienQuyetView {
         UUID getId();

@@ -3,7 +3,6 @@ package com.university.dto.request.admin;
 import com.alibaba.excel.annotation.ExcelProperty;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Getter
@@ -20,14 +19,15 @@ public class KhoaAdminRequestDTO {
     @ExcelProperty(index = 1)
     private String tenKhoa;
 
+    @NotBlank(message = "Địa chỉ không được để trống")
     @ExcelProperty(index = 2)
     private String diaChi;
 
     @ExcelProperty(index = 3)
     private String moTa;
 
-    @NotNull(message = "Mã trường không được để trống")
-    @ExcelProperty(index = 4)
-    private String maTruong;
+    // @NotNull(message = "Mã trường không được để trống")
+    // @ExcelProperty(index = 4)
+    // private String maTruong;
 
 }

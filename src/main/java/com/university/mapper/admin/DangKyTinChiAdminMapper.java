@@ -52,10 +52,22 @@ public class DangKyTinChiAdminMapper {
         // Ánh xạ ID từ các thực thể quan hệ sang DTO
         if (entity.getLopHocPhan() != null) {
             dto.setLopHocPhanId(entity.getLopHocPhan().getId());
+            dto.setMaLopHocPhan(entity.getLopHocPhan().getMaLopHocPhan());
+
+            if (entity.getLopHocPhan().getMonHoc() != null) {
+                dto.setMonHocId(entity.getLopHocPhan().getMonHoc().getId());
+                dto.setMaMonHoc(entity.getLopHocPhan().getMonHoc().getMaMonHoc());
+                dto.setSoTinChi(entity.getLopHocPhan().getMonHoc().getSoTinChi());
+            }
         }
 
         if (entity.getHocVien() != null) {
             dto.setHocVienId(entity.getHocVien().getId());
+            dto.setMaHocVien(entity.getHocVien().getMaHocVien());
+
+            if (entity.getHocVien().getUsers() != null) {
+                dto.setUsersId(entity.getHocVien().getUsers().getId());
+            }
         }
 
         return dto;

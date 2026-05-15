@@ -1,6 +1,9 @@
 package com.university.dto.response.admin;
 
 import java.util.UUID;
+
+import com.university.enums.TrangThaiDiemDanhEnum;
+
 import lombok.*;
 
 @Getter
@@ -10,7 +13,7 @@ import lombok.*;
 public class DiemDanhAdminResponseDTO {
 
     private UUID id;
-    private Boolean trangThai;
+    private TrangThaiDiemDanhEnum trangThai;
     private UUID hocVienId;
     private UUID lichId;
 
@@ -18,7 +21,7 @@ public class DiemDanhAdminResponseDTO {
 
         UUID getId();
 
-        Boolean getTrangThai();
+        TrangThaiDiemDanhEnum getTrangThai();
 
         UUID getHocVienId();
 

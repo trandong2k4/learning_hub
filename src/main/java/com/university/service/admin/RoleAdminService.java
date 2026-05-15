@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -79,35 +80,52 @@ public class RoleAdminService {
     private final UserRoleAdminRepository u;
     private final RolePermissionsAdminRepository r;
 
-    public void delete(UUID roleId) {
+    private boolean hasForeignKey(UUID roleId) {
+        return u.existsByRoleId(roleId) || r.existsByRoleId(roleId);
+    }
 
+    private void checkCanDelete(UUID roleId) {
         if (u.existsByRoleId(roleId)) {
-            throw new RuntimeException("Role đang được gán cho User, không thể xóa");
+            throw new SimpleMessageException("Vai trò đang được gán cho người dùng, không thể xóa");
         }
-
         if (r.existsByRoleId(roleId)) {
-            throw new RuntimeException("Role đang có Permission, không thể xóa");
+            throw new SimpleMessageException("Vai trò đang có quyền liên kết, không thể xóa");
         }
+    }
+
+    public void delete(UUID roleId) {
+        checkCanDelete(roleId);
         roleRepository.deleteById(roleId);
     }
 
     @Transactional
-    public void deleteAllByList(List<UUID> ids) {
+    public List<String> deleteAllByList(List<UUID> ids) {
         if (ids == null || ids.isEmpty()) {
-            return;
+            return new ArrayList<>();
         }
-        try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
 
-            // }
-            // }
-            roleRepository.deleteAllByIdIn(ids);
+        List<UUID> deletable = new ArrayList<>();
+        List<String> cannotDelete = new ArrayList<>();
 
-        } catch (Exception e) {
-            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        for (UUID id : ids) {
+            if (hasForeignKey(id)) {
+                String maRole = "Unknown";
+                try {
+                    maRole = roleRepository.findById(id)
+                            .map(Role::getMaRole)
+                            .orElse("Unknown");
+                } catch (Exception ignored) {}
+                cannotDelete.add(maRole);
+            } else {
+                deletable.add(id);
+            }
         }
+
+        if (!deletable.isEmpty()) {
+            roleRepository.deleteAllByIdInBatch(deletable);
+        }
+
+        return cannotDelete;
     }
 
 }

@@ -30,17 +30,15 @@ public class UserRoleAdminMapper {
         ur.setUpdatedAt(LocalDateTime.now());
     }
 
-    public UsersRoleAdminResponseDTO toResponseDTO(UserRole entity) {
+    public UsersRoleAdminResponseDTO toResponseDTO(UserRole entity, Users users, Role role) {
         UsersRoleAdminResponseDTO dto = new UsersRoleAdminResponseDTO();
-
         dto.setId(entity.getId());
-        dto.setUserId(entity.getUsers().getId());
-        dto.setRoleId(entity.getRole().getId());
-        dto.setUserName(entity.getUsers().getUsername());
+        dto.setUserId(users.getId());
+        dto.setRoleId(role.getId());
+        dto.setUserName(users.getUsername());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
-        dto.setMaRole(entity.getRole().getMaRole());
-
+        dto.setMaRole(role.getMaRole());
         return dto;
     }
 }

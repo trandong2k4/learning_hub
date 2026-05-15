@@ -1,119 +1,89 @@
 package com.university.controller.auth;
 
-import com.university.dto.request.auth.ForgotPasswordRequestDTO;
-import com.university.dto.request.auth.LoginRequestDTO;
-import com.university.dto.request.auth.LogoutRequestDTO;
-import com.university.dto.request.auth.RefreshRequest;
-import com.university.dto.request.auth.ResetPasswordRequestDTO;
-import com.university.dto.response.auth.LoginResponseDTO;
-import com.university.dto.response.auth.MessageResponseDTO;
-import com.university.dto.response.auth.RefreshResponseDTO;
-import com.university.entity.Users;
-import com.university.repository.admin.PermissionsAdminRepository;
-import com.university.repository.admin.UsersAdminRepository;
+import com.university.dto.request.auth.*;
+import com.university.dto.response.auth.*;
+import com.university.exception.SimpleMessageException;
 import com.university.service.auth.AuthService;
-import com.university.service.auth.CustomUserDetailsService;
 import com.university.service.auth.PasswordResetService;
 import com.university.service.auth.RefreshTokenService;
-import com.university.util.JwtUtil;
 
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
-import java.util.List;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthService authService;
-    private final RefreshTokenService refreshTokenService;
-    private final CustomUserDetailsService customUserDetailsService;
-    private final JwtUtil jwtUtil;
-    private final PasswordResetService passwordResetService;
-    private final PermissionsAdminRepository pr;
+        private final AuthService authService;
+        private final RefreshTokenService refreshTokenService;
+        private final PasswordResetService passwordResetService;
 
-    public AuthController(AuthService authService,
-            RefreshTokenService refreshTokenService,
-            JwtUtil jwtUtil,
-            CustomUserDetailsService customUserDetailsService,
-            PasswordResetService passwordResetService, PermissionsAdminRepository permissionsAdminRepository,
-            UsersAdminRepository usersAdminRepository) {
-        this.authService = authService;
-        this.refreshTokenService = refreshTokenService;
-        this.jwtUtil = jwtUtil;
-        this.customUserDetailsService = customUserDetailsService;
-        this.passwordResetService = passwordResetService;
-        this.pr = permissionsAdminRepository;
-        this.usersAdminRepository = usersAdminRepository;
-    }
+        // ================= LOGIN =================
+        @PostMapping("/login")
+        public ResponseEntity<LoginResponseDTO> login(
+                        @Valid @RequestBody LoginRequestDTO request) {
 
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
-        LoginResponseDTO response = authService.authenticate(request.getUsername(), request.getPassword());
-        return ResponseEntity.ok(response);
-    }
-
-    private final UsersAdminRepository usersAdminRepository;
-
-    @PostMapping("/refresh")
-    public ResponseEntity<?> refreshToken(@RequestBody RefreshRequest request) {
-
-        String refreshToken = request.getRefreshToken();
-
-        if (!jwtUtil.isRefreshTokenValid(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new MessageResponseDTO("Refresh token không hợp lệ hoặc đã hết hạn"));
+                return ResponseEntity.ok(
+                                authService.authenticate(
+                                                request.getUsername(),
+                                                request.getPassword()));
         }
 
-        String username = jwtUtil.extractUsername(refreshToken);
+        // ================= REFRESH =================
+        @PostMapping("/refresh")
+        public ResponseEntity<?> refreshToken(
+                        @RequestBody RefreshRequest request) {
 
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+                String refreshToken = request.getRefreshToken();
 
-        Users users = usersAdminRepository.findByUserName(username)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy users"));
+                String userId = refreshTokenService.getUserId(refreshToken);
 
-        List<String> permissions = pr.findMaPermissionsByUserId(users.getId());
+                if (userId == null) {
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                        .body(new MessageResponseDTO("Refresh token không hợp lệ hoặc đã hết hạn"));
+                }
 
-        String newAccessToken = jwtUtil.generateAccessToken(userDetails, permissions);
+                String newAccessToken = authService.generateAccessTokenFromUserId(userId);
 
-        return ResponseEntity.ok(new RefreshResponseDTO(newAccessToken, refreshToken));
-    }
-
-    @PostMapping("/logout")
-    public ResponseEntity<MessageResponseDTO> logout(@RequestBody LogoutRequestDTO request,
-            Authentication authentication) {
-
-        String username = authentication.getName();
-        String refreshToken = request.getRefreshToken();
-
-        if (!refreshTokenService.validateRefreshToken(refreshToken, username)) {
-            return ResponseEntity.badRequest()
-                    .body(new MessageResponseDTO("Refresh token không hợp lệ"));
+                return ResponseEntity.ok(
+                                new RefreshResponseDTO(newAccessToken, refreshToken));
         }
 
-        refreshTokenService.deleteByToken(refreshToken);
+        @PostMapping("/logout")
+        public ResponseEntity<?> logout(
+                        @RequestHeader(value = "Authorization", required = false) String authHeader,
+                        @RequestBody(required = false) LogoutRequestDTO logoutRequest) { // Chấp nhận cả khi body trống
 
-        return ResponseEntity.ok(new MessageResponseDTO("Đăng xuất thành công"));
-    }
+                if (logoutRequest == null || logoutRequest.getRefreshToken() == null) {
+                        throw new SimpleMessageException("Thiếu Refresh Token để đăng xuất");
+                }
 
-    @PostMapping("/forgot-password")
-    public ResponseEntity<MessageResponseDTO> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO request) {
-        passwordResetService.forgotPassword(request);
-        return ResponseEntity.ok(
-                new MessageResponseDTO(
-                        "Nếu email tồn tại trong hệ thống, hướng dẫn khôi phục mật khẩu đã được gửi đến email của bạn"));
-    }
+                return ResponseEntity.ok(authService.Logout(authHeader, logoutRequest.getRefreshToken()));
+        }
 
-    @PostMapping("/reset-password")
-    public ResponseEntity<MessageResponseDTO> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO request) {
-        passwordResetService.resetPassword(request);
-        return ResponseEntity.ok(new MessageResponseDTO("Đặt lại mật khẩu thành công"));
-    }
+        @PostMapping("/forgot-password")
+        public ResponseEntity<MessageResponseDTO> forgotPassword(
+                        @Valid @RequestBody ForgotPasswordRequestDTO request) {
+
+                passwordResetService.forgotPassword(request);
+
+                return ResponseEntity.ok(
+                                new MessageResponseDTO(
+                                                "Nếu email tồn tại, hướng dẫn đã được gửi"));
+        }
+
+        // ================= RESET PASSWORD =================
+        @PostMapping("/reset-password")
+        public ResponseEntity<MessageResponseDTO> resetPassword(
+                        @Valid @RequestBody ResetPasswordRequestDTO request) {
+
+                passwordResetService.resetPassword(request);
+
+                return ResponseEntity.ok(
+                                new MessageResponseDTO("Đặt lại mật khẩu thành công"));
+        }
 }

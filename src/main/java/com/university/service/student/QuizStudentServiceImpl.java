@@ -29,6 +29,7 @@ public class QuizStudentServiceImpl implements QuizStudentService {
 
     private final QuizRepository quizRepository;
     private final QuizAttemptRepository quizAttemptRepository;
+    private final AttemptAnswersRepository attemptAnswersRepository;
     private final AnswersRepository answersRepository;
     private final UserRepository usersRepository;
     private final QuizStudentMapper mapper;
@@ -61,7 +62,10 @@ public class QuizStudentServiceImpl implements QuizStudentService {
         Map<UUID, QuizAttempt> latestAttempts = getLatestAttemptsByQuiz(quizPage.getContent(), hocVien.getId());
 
         List<QuizListStudentResponse> content = quizPage.getContent().stream()
-                .map(quiz -> mapper.toQuizListDTO(quiz, resolveQuizStatus(quiz, latestAttempts.get(quiz.getId()))))
+                .map(quiz -> mapper.toQuizListDTO(
+                        quiz,
+                        resolveQuizStatus(quiz, latestAttempts.get(quiz.getId())),
+                        latestAttempts.get(quiz.getId())))
                 .toList();
 
         return new PageImpl<>(content, pageable, quizPage.getTotalElements());
@@ -79,7 +83,10 @@ public class QuizStudentServiceImpl implements QuizStudentService {
 
         return quizzes
                 .stream()
-                .map(quiz -> mapper.toQuizListDTO(quiz, resolveQuizStatus(quiz, latestAttempts.get(quiz.getId()))))
+                .map(quiz -> mapper.toQuizListDTO(
+                        quiz,
+                        resolveQuizStatus(quiz, latestAttempts.get(quiz.getId())),
+                        latestAttempts.get(quiz.getId())))
                 .toList();
     }
 
@@ -109,7 +116,10 @@ public class QuizStudentServiceImpl implements QuizStudentService {
         Map<UUID, QuizAttempt> latestAttempts = getLatestAttemptsByQuiz(quizPage.getContent(), hocVien.getId());
 
         List<QuizListStudentResponse> content = quizPage.getContent().stream()
-                .map(quiz -> mapper.toQuizListDTO(quiz, resolveQuizStatus(quiz, latestAttempts.get(quiz.getId()))))
+                .map(quiz -> mapper.toQuizListDTO(
+                        quiz,
+                        resolveQuizStatus(quiz, latestAttempts.get(quiz.getId())),
+                        latestAttempts.get(quiz.getId())))
                 .toList();
 
         return new PageImpl<>(content, pageable, quizPage.getTotalElements());
@@ -167,9 +177,11 @@ public class QuizStudentServiceImpl implements QuizStudentService {
     // ================================================================
     // 📌 6. NỘP BÀI
     // ================================================================
+    @SuppressWarnings("null")
     @Override
     @Transactional
     public QuizResultStudentResponse submitQuiz(UUID attemptId, Map<UUID, UUID> answers) {
+        Map<UUID, UUID> submittedAnswers = answers == null ? Map.of() : answers;
 
         // 👉 1. Lấy học viên từ JWT
         HocVien hocVien = getCurrentHocVien();
@@ -195,7 +207,7 @@ public class QuizStudentServiceImpl implements QuizStudentService {
         }
 
         // 👉 6. Load toàn bộ answers 1 lần — tránh N+1 query
-        Set<UUID> answerIds = answers.values().stream()
+        Set<UUID> answerIds = submittedAnswers.values().stream()
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
@@ -205,37 +217,53 @@ public class QuizStudentServiceImpl implements QuizStudentService {
 
         // 👉 7. Tính điểm
         int correct = 0;
-        int total = 0;
+        List<Questions> quizQuestions = getQuestions(quiz);
+        List<AttemptAnswers> attemptAnswerDetails = new ArrayList<>();
 
-        for (QuizExercise qe : quiz.getDQuizExercises()) {
-            if (qe.getExercise() == null) continue;
+        for (Questions question : quizQuestions) {
+            UUID selectedAnswerId = submittedAnswers.get(question.getId());
+            if (selectedAnswerId == null) {
+                continue;
+            }
 
-            for (Questions question : qe.getExercise().getDQuestions()) {
-                total++;
+            Answers answer = answerMap.get(selectedAnswerId);
+            boolean validAnswerForQuestion = answer != null
+                    && answer.getQuestions() != null
+                    && answer.getQuestions().getId().equals(question.getId());
 
-                UUID selectedAnswerId = answers.get(question.getId());
-                if (selectedAnswerId == null) continue;
+            if (!validAnswerForQuestion) {
+                continue;
+            }
 
-                Answers answer = answerMap.get(selectedAnswerId);
+            AttemptAnswers detail = new AttemptAnswers();
+            detail.setQuizAttempt(attempt);
+            detail.setQuestions(question);
+            detail.setAnswers(answer);
+            attemptAnswerDetails.add(detail);
 
-                if (answer != null
-                        && answer.getQuestions() != null
-                        && answer.getQuestions().getId().equals(question.getId())
-                        && Boolean.TRUE.equals(answer.getIsCorrect())) {
-                    correct++;
-                }
+            if (Boolean.TRUE.equals(answer.getIsCorrect())) {
+                correct++;
             }
         }
 
         // 👉 8. Tính điểm thang 10, làm tròn 2 chữ số
         float score = 0f;
+        int total = quizQuestions.size();
         if (total > 0) {
             score = Math.round(((float) correct / total) * 10 * 100) / 100f;
         }
 
         // 👉 9. Lưu kết quả
+        int remainingAtSubmit = calculateRemainingTime(quiz, attempt);
+        int fullDurationSeconds = quiz.getThoiGianLam() == null ? 0 : quiz.getThoiGianLam() * SECONDS_PER_MINUTE;
+        attemptAnswersRepository.deleteByQuizAttempt_Id(attempt.getId());
+        if (!attemptAnswerDetails.isEmpty()) {
+            attemptAnswersRepository.saveAll(attemptAnswerDetails);
+        }
         attempt.setScore(score);
         attempt.setEndTime(LocalDateTime.now());
+        attempt.setRemainingTime(remainingAtSubmit);
+        attempt.setUsedTime(fullDurationSeconds > 0 ? Math.max(0, fullDurationSeconds - remainingAtSubmit) : null);
         attempt.setStatus(true);
         quizAttemptRepository.save(attempt);
 
@@ -302,7 +330,8 @@ public class QuizStudentServiceImpl implements QuizStudentService {
         LocalDateTime deadlineByDuration = attempt.getStartTime().plusMinutes(quiz.getThoiGianLam());
         LocalDateTime effectiveDeadline = quiz.getThoiGianKetThuc() == null
                 ? deadlineByDuration
-                : deadlineByDuration.isBefore(quiz.getThoiGianKetThuc()) ? deadlineByDuration : quiz.getThoiGianKetThuc();
+                : deadlineByDuration.isBefore(quiz.getThoiGianKetThuc()) ? deadlineByDuration
+                        : quiz.getThoiGianKetThuc();
 
         if (!now.isBefore(effectiveDeadline)) {
             return 0;
@@ -310,5 +339,26 @@ public class QuizStudentServiceImpl implements QuizStudentService {
 
         long seconds = Duration.between(now, effectiveDeadline).getSeconds();
         return (int) Math.max(0, Math.min(seconds, fullDurationSeconds));
+    }
+
+    private List<Questions> getQuestions(Quiz quiz) {
+        Map<UUID, Questions> questions = new LinkedHashMap<>();
+
+        if (quiz.getDQuizQuestions() != null) {
+            quiz.getDQuizQuestions().stream()
+                    .map(QuizQuestions::getQuestions)
+                    .filter(q -> q != null && q.getId() != null)
+                    .forEach(q -> questions.putIfAbsent(q.getId(), q));
+        }
+
+        if (quiz.getDQuizExercises() != null) {
+            quiz.getDQuizExercises().stream()
+                    .filter(qe -> qe.getExercise() != null && qe.getExercise().getDQuestions() != null)
+                    .flatMap(qe -> qe.getExercise().getDQuestions().stream())
+                    .filter(q -> q != null && q.getId() != null)
+                    .forEach(q -> questions.putIfAbsent(q.getId(), q));
+        }
+
+        return List.copyOf(questions.values());
     }
 }

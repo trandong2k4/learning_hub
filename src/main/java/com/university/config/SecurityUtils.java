@@ -3,6 +3,7 @@ package com.university.config;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.university.security.CustomUserDetails;
 import java.util.UUID;
+
 public class SecurityUtils {
 
     public static UUID getCurrentHocVienId() {
@@ -12,9 +13,13 @@ public class SecurityUtils {
                 .getPrincipal();
 
         if (principal instanceof CustomUserDetails user) {
-            return user.getHocVienId();
+            return user.getUserId();
         }
 
         throw new RuntimeException("Không lấy được hocVienId");
+    }
+
+    public static UUID getCurrentUserId() {
+        return getCurrentHocVienId();
     }
 }

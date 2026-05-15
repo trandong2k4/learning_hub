@@ -1,8 +1,9 @@
 package com.university.controller.admin;
 
-import com.university.dto.request.admin.BaiVietAdminRequestDTO;
-import com.university.dto.response.admin.BaiVietAdminResponseDTO;
-import com.university.service.admin.BaiVietAdminService;
+import com.university.annotation.RequirePermission;
+import com.university.dto.request.admin.GiangDayAdminRequestDTO;
+import com.university.dto.response.admin.GiangDayAdminResponseDTO;
+import com.university.service.admin.GiangDayAdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,39 +16,46 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin/giang-day")
 @RequiredArgsConstructor
+@RequirePermission("ADMIN_SCHEDULE_MANAGE_VIEW")
 public class GiangDayAdminController {
 
-    private final BaiVietAdminService baiVietService;
+    private final GiangDayAdminService giangDayService;
 
     @PostMapping
-    public ResponseEntity<BaiVietAdminResponseDTO> createBaiViet(
-            @Valid @RequestBody BaiVietAdminRequestDTO request) {
-        BaiVietAdminResponseDTO response = baiVietService.createBaiViet(request);
+    public ResponseEntity<GiangDayAdminResponseDTO> createGiangDay(
+            @Valid @RequestBody GiangDayAdminRequestDTO request) {
+        GiangDayAdminResponseDTO response = giangDayService.createGiangDay(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<BaiVietAdminResponseDTO> updateBaiViet(
+    public ResponseEntity<GiangDayAdminResponseDTO> updateGiangDay(
             @PathVariable UUID id,
-            @Valid @RequestBody BaiVietAdminRequestDTO request) {
-        BaiVietAdminResponseDTO response = baiVietService.updateBaiViet(id, request);
+            @Valid @RequestBody GiangDayAdminRequestDTO request) {
+        GiangDayAdminResponseDTO response = giangDayService.updateGiangDay(id, request);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaiVietAdminResponseDTO> getBaiViet(@PathVariable UUID id) {
-        BaiVietAdminResponseDTO response = baiVietService.getBaiVietById(id);
+    public ResponseEntity<GiangDayAdminResponseDTO> getGiangDay(@PathVariable UUID id) {
+        GiangDayAdminResponseDTO response = giangDayService.getGiangDayById(id);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping
-    public ResponseEntity<List<BaiVietAdminResponseDTO.BaiVietView>> getAllBaiViet() {
-        return ResponseEntity.ok(baiVietService.getALlBaiViet());
+    public ResponseEntity<List<GiangDayAdminResponseDTO>> getAllGiangDay() {
+        return ResponseEntity.ok(giangDayService.getAll());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteBaiViet(@PathVariable UUID id) {
-        baiVietService.deleteBaiViet(id);
+    public ResponseEntity<Void> deleteGiangDay(@PathVariable UUID id) {
+        giangDayService.deleteGiangDay(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/delete-list")
+    public ResponseEntity<Void> deleteList(@RequestBody List<UUID> ids) {
+        giangDayService.deleteAllByList(ids);
         return ResponseEntity.noContent().build();
     }
 }

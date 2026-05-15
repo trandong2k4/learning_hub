@@ -1,21 +1,19 @@
 package com.university.service.admin;
 
-import com.university.dto.request.admin.BaiVietAdminRequestDTO;
-import com.university.dto.response.admin.BaiVietAdminResponseDTO;
-import com.university.entity.BaiViet;
-import com.university.entity.Users;
+import com.university.dto.request.admin.LienHeAdminRequestDTO;
+import com.university.dto.response.admin.LienHeAdminResponseDTO;
+import com.university.entity.Khoa;
+import com.university.entity.LienHe;
 import com.university.exception.SimpleMessageException;
-import com.university.mapper.admin.BaiVietAdminMapper;
-import com.university.repository.admin.BaiVietAdminRepository;
+import com.university.mapper.admin.LienHeAdminMapper;
+import com.university.repository.admin.KhoaAdminRepository;
 import com.university.repository.admin.LienHeAdminRepository;
-import com.university.repository.admin.UsersAdminRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,56 +22,74 @@ import java.util.UUID;
 public class LienHeAdminService {
 
     private final LienHeAdminRepository lienHeAdminRepository;
-    private final BaiVietAdminRepository baiVietRepository;
-    private final UsersAdminRepository usersRepository;
-    private final BaiVietAdminMapper baiVietMapper;
+    private final KhoaAdminRepository khoaAdminRepository;
+    private final LienHeAdminMapper lienHeAdminMapper;
 
     @Transactional
-    public BaiVietAdminResponseDTO createBaiViet(BaiVietAdminRequestDTO request) {
-        Users user = usersRepository.findById(request.getUsersId())
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
+    public LienHeAdminResponseDTO create(LienHeAdminRequestDTO request) {
+        normalizeRequest(request);
+        validateUnique(request, null);
 
-        BaiViet baiViet = baiVietMapper.toEntity(request);
-        baiViet.setUsers(user);
-        baiViet.setCreatedAt(LocalDateTime.now());
-        baiViet.setUpdatedAt(LocalDateTime.now());
+        Khoa khoa = khoaAdminRepository.findById(request.getKhoaId())
+                .orElseThrow(() -> new EntityNotFoundException("Khoa không tồn tại"));
 
-        BaiViet saved = baiVietRepository.save(baiViet);
-        return baiVietMapper.toResponseDTO(saved);
+        LienHe lienHe = lienHeAdminMapper.toEntity(request);
+        lienHe.setKhoa(khoa);
+
+        LienHe saved = lienHeAdminRepository.save(lienHe);
+        return lienHeAdminMapper.toResponseDTO(saved, khoa);
+    }
+
+    public LienHeAdminResponseDTO getById(UUID id) {
+        LienHe lienHe = lienHeAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Liên hệ không tồn tại"));
+        Khoa khoa = khoaAdminRepository.findById(lienHe.getKhoa().getId())
+                .orElseThrow(() -> new EntityNotFoundException("Khoa không tồn tại"));
+        return lienHeAdminMapper.toResponseDTO(lienHe, khoa);
+    }
+
+    public List<LienHeAdminResponseDTO> getAll() {
+        return lienHeAdminRepository.findAllDTO();
+    }
+
+    public List<LienHeAdminResponseDTO> getAllByKhoa(UUID khoaId) {
+        if (!khoaAdminRepository.existsById(khoaId)) {
+            throw new EntityNotFoundException("Khoa không tồn tại");
+        }
+        return lienHeAdminRepository.findAllByKhoaIdDTO(khoaId);
+    }
+
+    public List<LienHeAdminResponseDTO> search(String keyword) {
+        String cleanedKeyword = keyword == null ? "" : keyword.trim();
+        if (cleanedKeyword.isBlank()) {
+            return getAll();
+        }
+        return lienHeAdminRepository.searchDTO(cleanedKeyword);
     }
 
     @Transactional
-    public BaiVietAdminResponseDTO updateBaiViet(UUID id, BaiVietAdminRequestDTO request) {
-        BaiViet existing = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
+    public LienHeAdminResponseDTO update(UUID id, LienHeAdminRequestDTO request) {
+        normalizeRequest(request);
 
-        Users user = usersRepository.findById(request.getUsersId())
-                .orElseThrow(() -> new EntityNotFoundException("User không tồn tại"));
+        LienHe existing = lienHeAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Liên hệ không tồn tại"));
 
-        baiVietMapper.updateEntity(existing, request);
-        existing.setUsers(user);
-        existing.setUpdatedAt(LocalDateTime.now());
+        validateUnique(request, id);
 
-        BaiViet updated = baiVietRepository.save(existing);
-        return baiVietMapper.toResponseDTO(updated);
-    }
+        Khoa khoa = khoaAdminRepository.findById(request.getKhoaId())
+                .orElseThrow(() -> new EntityNotFoundException("Khoa không tồn tại"));
 
-    public BaiVietAdminResponseDTO getBaiVietById(UUID id) {
-        BaiViet baiViet = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
-        return baiVietMapper.toResponseDTO(baiViet);
-    }
+        lienHeAdminMapper.updateEntity(existing, request);
+        existing.setKhoa(khoa);
 
-    public List<BaiVietAdminResponseDTO.BaiVietView> getALlBaiViet() {
-        return baiVietRepository.findAllBaiVietView();
+        return lienHeAdminMapper.toResponseDTO(lienHeAdminRepository.save(existing), khoa);
     }
 
     @Transactional
-    public void deleteBaiViet(UUID id) {
-        BaiViet bv = baiVietRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bài viết không tồn tại"));
-
-        baiVietRepository.delete(bv);
+    public void delete(UUID id) {
+        LienHe lienHe = lienHeAdminRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Liên hệ không tồn tại"));
+        lienHeAdminRepository.delete(lienHe);
     }
 
     @Transactional
@@ -82,16 +98,59 @@ public class LienHeAdminService {
             return;
         }
         try {
-            // Kiem tra user dang co trong cac db khac khong
-            // for (UUID uuid : ids) {
-            // if (usersAdminRepository.) {
-
-            // }
-            // }
             lienHeAdminRepository.deleteAllByIdIn(ids);
-
         } catch (Exception e) {
             throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
+        }
+    }
+
+    private void normalizeRequest(LienHeAdminRequestDTO request) {
+        if (request == null) {
+            throw new SimpleMessageException("Thông tin liên hệ không được để trống");
+        }
+
+        request.setTenLienHe(request.getTenLienHe().trim());
+        request.setFanPageUrl(request.getFanPageUrl().trim());
+        request.setEmail(request.getEmail().trim().toLowerCase());
+
+        if (request.getSoDienThoai() != null) {
+            request.setSoDienThoai(request.getSoDienThoai().trim());
+            if (request.getSoDienThoai().isBlank()) {
+                request.setSoDienThoai(null);
+            }
+        }
+
+        if (request.getTenLienHe().length() > 30) {
+            throw new SimpleMessageException("Tên liên hệ tối đa 30 ký tự");
+        }
+
+        if (request.getEmail().length() > 50) {
+            throw new SimpleMessageException("Email tối đa 50 ký tự");
+        }
+    }
+
+    private void validateUnique(LienHeAdminRequestDTO request, UUID currentId) {
+        boolean tenLienHeExists = currentId == null
+                ? lienHeAdminRepository.existsByTenLienHeIgnoreCase(request.getTenLienHe())
+                : lienHeAdminRepository.existsByTenLienHeIgnoreCaseAndIdNot(request.getTenLienHe(), currentId);
+        if (tenLienHeExists) {
+            throw new SimpleMessageException("Tên liên hệ đã tồn tại");
+        }
+
+        boolean emailExists = currentId == null
+                ? lienHeAdminRepository.existsByEmailIgnoreCase(request.getEmail())
+                : lienHeAdminRepository.existsByEmailIgnoreCaseAndIdNot(request.getEmail(), currentId);
+        if (emailExists) {
+            throw new SimpleMessageException("Email liên hệ đã tồn tại");
+        }
+
+        if (request.getSoDienThoai() != null) {
+            boolean phoneExists = currentId == null
+                    ? lienHeAdminRepository.existsBySoDienThoai(request.getSoDienThoai())
+                    : lienHeAdminRepository.existsBySoDienThoaiAndIdNot(request.getSoDienThoai(), currentId);
+            if (phoneExists) {
+                throw new SimpleMessageException("Số điện thoại liên hệ đã tồn tại");
+            }
         }
     }
 }

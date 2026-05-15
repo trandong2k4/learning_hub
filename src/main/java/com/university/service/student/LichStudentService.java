@@ -1,6 +1,5 @@
 package com.university.service.student;
 
-import com.university.config.SecurityUtils;
 import com.university.dto.response.student.LichCaNhanStudentItemResponse;
 import com.university.dto.response.student.LichCaNhanStudentResponse;
 import com.university.entity.GioHoc;
@@ -27,9 +26,10 @@ public class LichStudentService {
     private static final String VIEW_MONTH = "MONTH";
 
     private final LichStudentRepository lichStudentRepository;
+    private final CurrentHocVienService currentHocVienService;
 
     public LichCaNhanStudentResponse getLichCaNhan(String view, LocalDate date) {
-        UUID hocVienId = SecurityUtils.getCurrentHocVienId();
+        UUID hocVienId = currentHocVienService.getCurrentHocVienId();
         String normalizedView = normalizeView(view);
         LocalDate referenceDate = date != null ? date : LocalDate.now();
         DateRange range = resolveDateRange(normalizedView, referenceDate);

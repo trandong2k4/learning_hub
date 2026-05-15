@@ -29,9 +29,9 @@ public class Khoa {
 
     private String moTa;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "truong_id", nullable = false)
-    private Truong truong;
+    // @ManyToOne(fetch = FetchType.LAZY)
+    // @JoinColumn(name = "truong_id", nullable = false)
+    // private Truong truong;
 
     @OneToMany(mappedBy = "khoa", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Nganh> dNganhs = new ArrayList<>();
