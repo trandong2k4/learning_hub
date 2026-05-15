@@ -18,10 +18,6 @@ import org.springframework.context.annotation.Configuration;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Initializer de tao permissions mac dinh cho Admin khi ung dung khoi dong.
- * Su dung batch operations de tranh N+1 query.
- */
 @Configuration
 @RequiredArgsConstructor
 @Slf4j
@@ -67,7 +63,8 @@ public class AdminPermissionsInitializer {
             // 3. Bo qua buoc gan role neu khong cho phep
             if (!autoAssign) {
                 log.info("PERMISSIONS_AUTO_ASSIGN=false — bo qua gan quyen vao role");
-                log.info("=== Admin Permissions Initialization Complete ({} permissions created) ===", permissionCodes.size());
+                log.info("=== Admin Permissions Initialization Complete ({} permissions created) ===",
+                        permissionCodes.size());
                 return;
             }
 
