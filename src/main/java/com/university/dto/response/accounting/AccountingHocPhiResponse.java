@@ -24,6 +24,7 @@ public class AccountingHocPhiResponse {
     private LocalDateTime updatedAt;
 
     private UUID hocVienId;
+    private String maHocVien;
     private String hocVienName;
     private String hocVienEmail;
 

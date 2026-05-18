@@ -5,6 +5,7 @@ import com.university.entity.Users;
 import com.university.repository.chatbot.ChatLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
@@ -23,5 +24,10 @@ public class ChatLogService {
 
     public List<ChatLog> getHistory(Users user) {
         return repo.findByUserIdOrderByCreatedAtAsc(user.getId());
+    }
+
+    @Transactional
+    public void clearHistory(Users user) {
+        repo.deleteByUserId(user.getId());
     }
 }

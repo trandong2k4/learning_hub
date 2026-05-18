@@ -9,4 +9,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface LecturerAssignmentRepository extends JpaRepository<Exercise, UUID> {
     List<Exercise> findByLopHocPhan_Id(UUID lopHocPhanId);
+
+    boolean existsByLopHocPhan_IdAndTieuDeAndThoiGianBatDauAndThoiGianKetThuc(
+            UUID lopHocPhanId,
+            String tieuDe,
+            java.time.LocalDateTime thoiGianBatDau,
+            java.time.LocalDateTime thoiGianKetThuc);
 }

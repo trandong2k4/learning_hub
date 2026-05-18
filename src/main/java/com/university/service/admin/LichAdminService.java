@@ -29,12 +29,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class LichAdminService {
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final LichAdminRepository lichAdminRepository;
     private final GioHocAdminRepository gioHocAdminRepository;
@@ -60,6 +63,8 @@ public class LichAdminService {
 
         LopHocPhan lopHocPhan = lopHocPhanAdminRepository.findById(request.getLopHocPhanId())
                 .orElseThrow(() -> new SimpleMessageException("Lớp học phần không tồn tại"));
+
+        validateRoomScheduleAvailable(null, request, phong, gioHoc);
 
         List<Lich> existingSchedules = lichAdminRepository.findAllLichByLopHocPhanId(lopHocPhan.getId());
 
@@ -97,6 +102,8 @@ public class LichAdminService {
         LopHocPhan lopHocPhan = lopHocPhanAdminRepository.findById(request.getLopHocPhanId())
                 .orElseThrow(() -> new SimpleMessageException("Lớp học phần không tồn tại"));
 
+        validateRoomScheduleAvailable(id, request, phong, gioHoc);
+
         lichMapper.updateEntity(existing, request);
         existing.setGioHoc(gioHoc);
         existing.setPhong(phong);
@@ -105,6 +112,36 @@ public class LichAdminService {
 
         Lich updated = lichAdminRepository.save(existing);
         return lichMapper.toResponseDTO(updated);
+    }
+
+    private void validateRoomScheduleAvailable(UUID excludeLichId, LichAdminRequestDTO request, Phong phong,
+            GioHoc gioHoc) {
+        LocalDateTime startOfDay = request.getNgayHoc().toLocalDate().atStartOfDay();
+        LocalDateTime startOfNextDay = startOfDay.plusDays(1);
+
+        List<Lich> conflicts = excludeLichId == null
+                ? lichAdminRepository.findRoomScheduleConflicts(
+                        phong.getId(),
+                        gioHoc.getId(),
+                        startOfDay,
+                        startOfNextDay)
+                : lichAdminRepository.findRoomScheduleConflictsExcluding(
+                        phong.getId(),
+                        gioHoc.getId(),
+                        startOfDay,
+                        startOfNextDay,
+                        excludeLichId);
+
+        if (conflicts.isEmpty()) {
+            return;
+        }
+
+        Lich conflict = conflicts.get(0);
+        String maLopHocPhan = conflict.getLopHocPhan() != null ? conflict.getLopHocPhan().getMaLopHocPhan() : "khác";
+        throw new SimpleMessageException("Phòng " + phong.getMaPhong()
+                + " đã có lịch học của lớp " + maLopHocPhan
+                + " vào ngày " + request.getNgayHoc().format(DATE_FORMATTER)
+                + " trong khung giờ " + gioHoc.getTenGioHoc());
     }
 
     @Transactional(readOnly = true)

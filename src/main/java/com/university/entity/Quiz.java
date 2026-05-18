@@ -50,6 +50,23 @@ public class Quiz {
 
     private Boolean trinhTrang;
 
+    @Column(length = 40)
+    private String quizType = "manual_question";
+
+    private Integer randomQuestionCount;
+
+    @Column(length = 40)
+    private String randomQuestionTypes;
+
+    private Boolean shuffleQuestions = false;
+
+    private Boolean shuffleAnswers = false;
+
+    @Column(length = 40)
+    private String showResult = "immediately";
+
+    private Float passScore;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

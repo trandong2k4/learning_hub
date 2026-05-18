@@ -7,4 +7,6 @@ import java.util.UUID;
 
 public interface ChatLogRepository extends JpaRepository<ChatLog, UUID> {
     List<ChatLog> findByUserIdOrderByCreatedAtAsc(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

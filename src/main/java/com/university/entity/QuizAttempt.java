@@ -42,6 +42,15 @@ public class QuizAttempt {
 
     private Integer remainingTime;
 
+    private Integer attemptNumber;
+
+    private Boolean isPassed;
+
+    private String ipAddress;
+
+    @Column(columnDefinition = "TEXT")
+    private String userAgent;
+
     @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;
 

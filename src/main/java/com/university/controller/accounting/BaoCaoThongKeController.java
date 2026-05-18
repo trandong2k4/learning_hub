@@ -1,5 +1,6 @@
 package com.university.controller.accounting;
 
+import com.university.annotation.RequirePermission;
 import com.university.dto.response.accounting.BaoCaoThongKeOverviewResponse;
 import com.university.dto.response.accounting.PaymentInfoResponse;
 import com.university.service.accounting.BaoCaoThongKeService;
@@ -15,8 +16,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/accounting")
+@RequestMapping("/api/accountant")
 @RequiredArgsConstructor
+@RequirePermission("ACCOUNTANT_REPORT_VIEW")
 public class BaoCaoThongKeController {
 
     private final BaoCaoThongKeService baoCaoThongKeService;

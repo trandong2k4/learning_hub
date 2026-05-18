@@ -6,7 +6,8 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -16,10 +17,13 @@ import com.university.dto.request.admin.HocVienExcelDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.entity.HocVien;
 import com.university.entity.Nganh;
+import com.university.entity.Role;
+import com.university.entity.UserRole;
 import com.university.entity.Users;
 import com.university.enums.GioiTinhEnum;
 import com.university.repository.admin.HocVienAdminRepository;
-import com.university.repository.admin.NganhAdminRepository;
+import com.university.repository.admin.RoleAdminRepository;
+import com.university.repository.admin.UserRoleAdminRepository;
 import com.university.repository.admin.UsersAdminRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -29,15 +33,18 @@ public class HocVienExcelListener extends AnalysisEventListener<HocVienExcelDTO>
 
     private final HocVienAdminRepository hocVienAdminRepository;
     private final UsersAdminRepository usersAdminRepository;
-    private final NganhAdminRepository nganhAdminRepository;
+    private final RoleAdminRepository roleAdminRepository;
+    private final UserRoleAdminRepository userRoleAdminRepository;
     private final PasswordEncoder passwordEncoder;
 
-    private final List<HocVien> toSave = new ArrayList<>();
+    private final List<PendingHocVien> toSave = new ArrayList<>();
     private final List<String> errors = new ArrayList<>();
 
     private final Set<String> maHocVienInDb;
     private final Set<String> usernamesInDb;
     private final Set<String> cccdsInDb;
+    private final Map<String, Nganh> nganhCache;
+    private final Map<String, Role> roleCache;
     private final Set<String> usernamesInFile = new HashSet<>();
     private final Set<String> maHocVienInFile = new HashSet<>();
     private static final int BATCH_COUNT = 100;
@@ -48,11 +55,14 @@ public class HocVienExcelListener extends AnalysisEventListener<HocVienExcelDTO>
     public HocVienExcelListener(
             HocVienAdminRepository hocVienAdminRepository,
             UsersAdminRepository usersAdminRepository,
-            NganhAdminRepository nganhAdminRepository,
+            Map<String, Nganh> nganhCache,
+            RoleAdminRepository roleAdminRepository,
+            UserRoleAdminRepository userRoleAdminRepository,
             PasswordEncoder passwordEncoder) {
         this.hocVienAdminRepository = hocVienAdminRepository;
         this.usersAdminRepository = usersAdminRepository;
-        this.nganhAdminRepository = nganhAdminRepository;
+        this.roleAdminRepository = roleAdminRepository;
+        this.userRoleAdminRepository = userRoleAdminRepository;
         this.passwordEncoder = passwordEncoder;
         this.maHocVienInDb = new HashSet<>(hocVienAdminRepository.findAllMaHocVien().stream()
                 .filter(m -> m != null && !m.trim().isEmpty())
@@ -65,6 +75,18 @@ public class HocVienExcelListener extends AnalysisEventListener<HocVienExcelDTO>
         this.cccdsInDb = usersAdminRepository.findAllCccds().stream()
                 .filter(c -> c != null && !c.trim().isEmpty())
                 .collect(Collectors.toSet());
+        this.nganhCache = nganhCache;
+        this.roleCache = loadRolesByCode(roleAdminRepository);
+    }
+
+    private Map<String, Role> loadRolesByCode(RoleAdminRepository roleRepository) {
+        Map<String, Role> map = new HashMap<>();
+        roleRepository.findAll().forEach(role -> {
+            if (role.getMaRole() != null && !role.getMaRole().trim().isEmpty()) {
+                map.put(role.getMaRole().trim().toUpperCase(), role);
+            }
+        });
+        return map;
     }
 
     @Override
@@ -99,12 +121,11 @@ public class HocVienExcelListener extends AnalysisEventListener<HocVienExcelDTO>
             errors.add("Dòng " + rowIndex + ": Mã ngành không được để trống");
             return;
         }
-        Optional<Nganh> nganhOpt = nganhAdminRepository.findByMaNganh(maNganh.trim());
-        if (nganhOpt.isEmpty()) {
+        Nganh nganh = nganhCache.get(maNganh.trim().toUpperCase());
+        if (nganh == null) {
             errors.add("Dòng " + rowIndex + ": Không tìm thấy ngành với mã '" + maNganh + "'");
             return;
         }
-        Nganh nganh = nganhOpt.get();
 
         String cccd = null;
         if (data.getCccd() != null && !data.getCccd().trim().isEmpty()) {
@@ -137,6 +158,17 @@ public class HocVienExcelListener extends AnalysisEventListener<HocVienExcelDTO>
         if (ngayTotNghiep != null && ngayNhapHoc != null && ngayTotNghiep.isBefore(ngayNhapHoc)) {
             errors.add("Dòng " + rowIndex + ": Ngày tốt nghiệp không được trước ngày nhập học");
             return;
+        }
+
+        Role role = null;
+        if (data.getMaRole() != null && !data.getMaRole().trim().isEmpty()) {
+            String maRole = data.getMaRole().trim().toUpperCase();
+            role = roleCache.get(maRole);
+            if (role == null) {
+                errors.add("Dòng " + rowIndex + ": Mã vai trò '" + data.getMaRole().trim()
+                        + "' không tồn tại trong hệ thống");
+                return;
+            }
         }
 
         Users user = new Users();
@@ -182,7 +214,7 @@ public class HocVienExcelListener extends AnalysisEventListener<HocVienExcelDTO>
         hocVien.setNganh(nganh);
         hocVien.setNgayNhapHoc(ngayNhapHoc);
         hocVien.setNgayTotNghiep(ngayTotNghiep);
-        toSave.add(hocVien);
+        toSave.add(new PendingHocVien(hocVien, user, role));
 
         if (toSave.size() >= BATCH_COUNT) {
             saveBatch();
@@ -223,12 +255,29 @@ public class HocVienExcelListener extends AnalysisEventListener<HocVienExcelDTO>
     private void saveBatch() {
         if (!toSave.isEmpty()) {
             try {
-                hocVienAdminRepository.saveAll(toSave);
+                List<HocVien> hocViensToSave = toSave.stream()
+                        .map(PendingHocVien::hocVien)
+                        .toList();
+                hocVienAdminRepository.saveAll(hocViensToSave);
+
+                List<UserRole> userRoles = toSave.stream()
+                        .filter(item -> item.role() != null)
+                        .map(item -> {
+                            UserRole userRole = new UserRole();
+                            userRole.setUsers(item.users());
+                            userRole.setRole(item.role());
+                            return userRole;
+                        })
+                        .toList();
+                if (!userRoles.isEmpty()) {
+                    userRoleAdminRepository.saveAll(userRoles);
+                }
+
                 successCount += toSave.size();
-                toSave.forEach(n -> maHocVienInDb.add(n.getMaHocVien()));
-                toSave.forEach(n -> usernamesInDb.add(n.getUsers().getUsername()));
+                toSave.forEach(n -> maHocVienInDb.add(n.hocVien().getMaHocVien()));
+                toSave.forEach(n -> usernamesInDb.add(n.users().getUsername()));
                 toSave.forEach(n -> {
-                    if (n.getUsers().getCccd() != null) cccdsInDb.add(n.getUsers().getCccd());
+                    if (n.users().getCccd() != null) cccdsInDb.add(n.users().getCccd());
                 });
             } catch (Exception e) {
                 errors.add("Lỗi khi lưu batch: " + e.getMessage());
@@ -264,5 +313,8 @@ public class HocVienExcelListener extends AnalysisEventListener<HocVienExcelDTO>
         result.setMessage(msg.toString());
 
         return result;
+    }
+
+    private record PendingHocVien(HocVien hocVien, Users users, Role role) {
     }
 }

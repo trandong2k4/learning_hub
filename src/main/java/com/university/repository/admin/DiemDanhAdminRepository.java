@@ -24,4 +24,7 @@ public interface DiemDanhAdminRepository extends JpaRepository<DiemDanh, UUID> {
     void deleteAllByIdIn(List<UUID> ids);
 
     boolean existsByHocVienId(UUID hocVienId);
+
+    @Query("SELECT DISTINCT d.hocVien.id FROM DiemDanh d WHERE d.hocVien.id IN :hocVienIds")
+    List<UUID> findHocVienIdsHavingDiemDanh(@org.springframework.data.repository.query.Param("hocVienIds") List<UUID> hocVienIds);
 }

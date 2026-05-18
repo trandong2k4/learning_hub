@@ -25,5 +25,8 @@ public interface GiangDayAdminRepository extends JpaRepository<GiangDay, UUID> {
 
     boolean existsByNhanVienId(UUID nhanVienId);
 
+    @Query("SELECT DISTINCT gd.nhanVien.id FROM GiangDay gd WHERE gd.nhanVien.id IN :nhanVienIds")
+    List<UUID> findNhanVienIdsHavingGiangDay(@org.springframework.data.repository.query.Param("nhanVienIds") List<UUID> nhanVienIds);
+
     boolean existsByNhanVienIdAndLopHocPhanId(UUID nhanVienId, UUID lopHocPhanId);
 }

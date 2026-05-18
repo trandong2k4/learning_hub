@@ -24,4 +24,11 @@ public class QuizResponseDTO {
     private LocalDateTime createdAt;
     private Integer questionCount;
     private List<QuestionResponseDTO> questions;
+    private String quizType;
+    private Integer randomQuestionCount;
+    private String randomQuestionTypes;
+    private Boolean shuffleQuestions;
+    private Boolean shuffleAnswers;
+    private String showResult;
+    private Float passScore;
 }

@@ -17,7 +17,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/student/schedule")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('STUDENT')")
+@PreAuthorize("hasAuthority('ROLE_student')")
 @RequirePermission("STU_SCHEDULE_VIEW")
 public class LichStudentController {
 

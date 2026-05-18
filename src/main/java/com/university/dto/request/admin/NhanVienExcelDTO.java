@@ -43,4 +43,7 @@ public class NhanVienExcelDTO {
 
     @ExcelProperty(index = 9)
     private String gioiTinh;
+
+    @ExcelProperty(index = 10)
+    private String maRole;
 }

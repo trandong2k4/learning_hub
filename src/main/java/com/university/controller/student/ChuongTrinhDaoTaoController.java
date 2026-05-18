@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/student/chuong-trinh-dao-tao")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('STUDENT')")
+@PreAuthorize("hasAuthority('ROLE_student')")
 @RequirePermission("STU_CURRICULUM_SEARCH")
 public class ChuongTrinhDaoTaoController {
 

@@ -17,6 +17,9 @@ public class QuizAttemptAnswerDetailDTO {
     private UUID selectedAnswerId;
     private String selectedKeyAnswers;
     private String selectedAnswerText;
+    private String textAnswer;
     private Boolean selectedCorrect;
+    private java.math.BigDecimal scoreReceived;
     private List<QuizAttemptAnswerOptionDTO> answers;
+    private List<QuizAttemptAnswerLogDTO> answerLogs;
 }

@@ -19,4 +19,14 @@ public interface ExerciseSubmitAnswerRepository extends JpaRepository<ExerciseSu
     List<ExerciseSubmitAnswer> findByExerciseIdAndHocVienId(
             @Param("exerciseId") UUID exerciseId,
             @Param("hocVienId") UUID hocVienId);
+
+    @Query("""
+            SELECT esa FROM ExerciseSubmitAnswer esa
+            JOIN FETCH esa.questions q
+            LEFT JOIN FETCH q.dAnswers
+            JOIN FETCH esa.submitExercise se
+            JOIN FETCH se.hocVien hv
+            WHERE se.id = :submissionId
+            """)
+    List<ExerciseSubmitAnswer> findBySubmissionIdWithQuestions(@Param("submissionId") UUID submissionId);
 }

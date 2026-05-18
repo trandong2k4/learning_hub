@@ -15,6 +15,7 @@ import lombok.*;
 public class LichAdminRequestDTO {
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @NotNull(message = "Ngày học không được để trống")
     private LocalDateTime ngayHoc;
     private String ghiChu;
     @NotNull(message = "Id giờ học không được để trống")

@@ -89,6 +89,9 @@ public interface NhanVienAdminRepository extends JpaRepository<NhanVien, UUID> {
 
         boolean existsByIdIn(List<UUID> ids);
 
+        @Query("SELECT DISTINCT nv.users.id FROM NhanVien nv WHERE nv.users.id IN :userIds")
+        List<UUID> findUserIdsAssignedToNhanVien(@Param("userIds") List<UUID> userIds);
+
         @Query("""
                         SELECT DISTINCT new com.university.dto.response.admin.NhanVienAdminResponseDTO(
                                 nv.id,

@@ -36,9 +36,8 @@ public class StudentPermissionsInitializer {
 
     @Bean
     public ApplicationRunner studentPermissionsRunner(
-            @Value("${app.permissions.auto-assign:true}") boolean autoAssign) {
+            @Value("${app.permissions.auto-assign:false}") boolean autoAssign) {
         return args -> {
-            log.info("=== Initializing Student Permissions ===");
 
             List<String> permissionCodes = Arrays.stream(StudentPermission.values())
                     .map(Enum::name)
@@ -67,7 +66,8 @@ public class StudentPermissionsInitializer {
             // 3. Bo qua buoc gan role neu khong cho phep
             if (!autoAssign) {
                 log.info("PERMISSIONS_AUTO_ASSIGN=false — bo qua gan quyen vao role");
-                log.info("=== Student Permissions Initialization Complete ({} permissions created) ===", permissionCodes.size());
+                log.info("=== Student Permissions Initialization Complete ({} permissions created) ===",
+                        permissionCodes.size());
                 return;
             }
 
@@ -89,7 +89,7 @@ public class StudentPermissionsInitializer {
 
             // 6. Lay permission IDs da gan cho role nay - 1 query
             List<UUID> permIds = allPermissions.stream().map(Permissions::getId).toList();
-            Set<UUID> assignedIds = rolePermissionsRepository.findAssignedPermissionsIds(permIds);
+            Set<UUID> assignedIds = rolePermissionsRepository.findAssignedPermissionsIdsByRoleId(studentRole.getId(), permIds);
 
             // 7. Tao nhung RolePermissions chua co - 1 query saveAll
             List<RolePermissions> toAssign = Arrays.stream(StudentPermission.values())

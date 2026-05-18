@@ -1,6 +1,9 @@
 package com.university.controller.student;
 
 import com.university.dto.response.student.*;
+import com.university.dto.request.student.QuizAnswerSaveItemRequest;
+import com.university.dto.request.student.QuizAttemptEventRequest;
+import com.university.dto.request.student.QuizAutoSaveRequest;
 import com.university.service.student.QuizStudentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,7 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/student/quiz")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('STUDENT')")
+@PreAuthorize("hasAuthority('ROLE_student')")
 @RequirePermission("STU_QUIZ_LIST_VIEW")
 public class QuizStudentController {
 
@@ -72,6 +75,33 @@ public class QuizStudentController {
         return ResponseEntity.ok(quizStudentService.startQuiz(quizId));
     }
 
+    // GET /api/student/quiz/attempts/{attemptId}
+    @GetMapping("/attempts/{attemptId}")
+    public ResponseEntity<QuizAttemptStudentResponse> getAttempt(
+            @PathVariable UUID attemptId) {
+
+        return ResponseEntity.ok(quizStudentService.getAttempt(attemptId));
+    }
+
+    // PUT /api/student/quiz/{attemptId}/answers
+    @PutMapping("/{attemptId}/answers")
+    public ResponseEntity<QuizAttemptStudentResponse> autoSaveAnswers(
+            @PathVariable UUID attemptId,
+            @RequestBody QuizAutoSaveRequest request) {
+
+        return ResponseEntity.ok(quizStudentService.autoSaveAnswers(attemptId, request));
+    }
+
+    // POST /api/student/quiz/{attemptId}/events
+    @PostMapping("/{attemptId}/events")
+    public ResponseEntity<Void> logAttemptEvent(
+            @PathVariable UUID attemptId,
+            @RequestBody QuizAttemptEventRequest request) {
+
+        quizStudentService.logAttemptEvent(attemptId, request);
+        return ResponseEntity.ok().build();
+    }
+
     // 📌 6. NỘP BÀI
     // POST /api/student/quiz/{attemptId}/submit
     // Body: { "questionId1": "answerId1", "questionId2": "answerId2" }
@@ -79,6 +109,14 @@ public class QuizStudentController {
     public ResponseEntity<QuizResultStudentResponse> submitQuiz(
             @PathVariable UUID attemptId,
             @RequestBody Map<UUID, UUID> answers) {
+
+        return ResponseEntity.ok(quizStudentService.submitQuiz(attemptId, answers));
+    }
+
+    @PostMapping("/{attemptId}/submit-detail")
+    public ResponseEntity<QuizResultStudentResponse> submitQuizDetail(
+            @PathVariable UUID attemptId,
+            @RequestBody List<QuizAnswerSaveItemRequest> answers) {
 
         return ResponseEntity.ok(quizStudentService.submitQuiz(attemptId, answers));
     }

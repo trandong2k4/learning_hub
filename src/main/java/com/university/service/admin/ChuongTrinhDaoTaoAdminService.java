@@ -44,7 +44,7 @@ public class ChuongTrinhDaoTaoAdminService {
     public List<ChuongTrinhDaoTaoAdminResponseDTO> getAllMonHoc() {
         return monHocRepository.FindAllDTO().stream()
                 .map(m -> new ChuongTrinhDaoTaoAdminResponseDTO(
-                        null, null, null, null,
+                        m.getId(), null, null, null,
                         m.getId(), m.getMaMonHoc(), m.getTenMonHoc(), m.getSoTinChi(), m.getMoTa()))
                 .toList();
     }

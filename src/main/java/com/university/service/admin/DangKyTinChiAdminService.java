@@ -43,7 +43,7 @@ public class DangKyTinChiAdminService {
         LopHocPhan lopHocPhan = lopHocPhanAdminRepository.findById(request.getLopHocPhanId())
                 .orElseThrow(() -> new EntityNotFoundException("Lớp học phần không tồn tại"));
 
-        validateRegistration(hocVien.getId(), lopHocPhan, null);
+        validateRegistration(hocVien.getId(), lopHocPhan, null, null);
 
         DangKyTinChi dangKyTinChi = dangKyTinChiAdminMapper.toEntity(request);
         dangKyTinChi.setHocVien(hocVien);
@@ -127,7 +127,8 @@ public class DangKyTinChiAdminService {
         LopHocPhan lopHocPhan = lopHocPhanAdminRepository.findById(request.getLopHocPhanId())
                 .orElseThrow(() -> new EntityNotFoundException("Lớp học phần không tồn tại"));
 
-        validateRegistration(hocVien.getId(), lopHocPhan, id);
+        UUID existingLopHocPhanId = existing.getLopHocPhan().getId();
+        validateRegistration(hocVien.getId(), lopHocPhan, id, existingLopHocPhanId);
 
         existing.setHocVien(hocVien);
         existing.setLopHocPhan(lopHocPhan);
@@ -155,19 +156,14 @@ public class DangKyTinChiAdminService {
         if (ids == null || ids.isEmpty()) {
             return;
         }
-        for (UUID id : ids) {
-            if (!dangKyTinChiAdminRepository.existsById(id)) {
-                throw new SimpleMessageException("Đăng ký tín chỉ không tồn tại: " + id);
-            }
+        long found = dangKyTinChiAdminRepository.countByIdIn(ids);
+        if (found < ids.size()) {
+            throw new SimpleMessageException("Một số đăng ký tín chỉ không tồn tại");
         }
-        try {
-            dangKyTinChiAdminRepository.deleteAllByIdIn(ids);
-        } catch (Exception e) {
-            throw new SimpleMessageException("Lỗi khi xóa danh sách: " + e.getMessage());
-        }
+        dangKyTinChiAdminRepository.deleteAllByIdIn(ids);
     }
 
-    private void validateRegistration(UUID hocVienId, LopHocPhan lopHocPhan, UUID excludeId) {
+    private void validateRegistration(UUID hocVienId, LopHocPhan lopHocPhan, UUID excludeId, UUID existingLopHocPhanId) {
         UUID lopHocPhanId = lopHocPhan.getId();
         UUID monHocId = lopHocPhan.getMonHoc().getId();
 
@@ -215,10 +211,7 @@ public class DangKyTinChiAdminService {
         }
 
         int soLuongDangKy = dangKyTinChiAdminRepository.countByLopHocPhan_Id(lopHocPhanId);
-        boolean sameRegistrationClass = excludeId != null
-                && dangKyTinChiAdminRepository.findById(excludeId)
-                        .map(d -> d.getLopHocPhan().getId().equals(lopHocPhanId))
-                        .orElse(false);
+        boolean sameRegistrationClass = excludeId != null && lopHocPhanId.equals(existingLopHocPhanId);
         if (!sameRegistrationClass && lopHocPhan.getSoLuongToiDa() != null && soLuongDangKy >= lopHocPhan.getSoLuongToiDa()) {
             throw new SimpleMessageException("Lớp học phần đã đầy");
         }

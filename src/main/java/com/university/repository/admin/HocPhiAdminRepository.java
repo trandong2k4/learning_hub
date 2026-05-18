@@ -22,6 +22,9 @@ public interface HocPhiAdminRepository extends JpaRepository<HocPhi, UUID> {
 
         boolean existsByHocVienId(UUID hocVienId);
 
+        @Query("SELECT DISTINCT hp.hocVien.id FROM HocPhi hp WHERE hp.hocVien.id IN :hocVienIds")
+        List<UUID> findHocVienIdsHavingHocPhi(@org.springframework.data.repository.query.Param("hocVienIds") List<UUID> hocVienIds);
+
         @Query("""
                         SELECT SUM(mh.soTinChi)
                         FROM DangKyTinChi d
@@ -64,10 +67,10 @@ public interface HocPhiAdminRepository extends JpaRepository<HocPhi, UUID> {
                                h.hocKi.tenHocKi AS hocKiTen,
                                COUNT(h) AS soLuong,
                                COALESCE(SUM(h.soTien), 0) AS tongTien,
-                               COALESCE(SUM(CASE WHEN h.trangThai = 'DA_THANH_TOAN' THEN h.soTien ELSE 0 END), 0) AS tienDaThu,
-                               COALESCE(SUM(CASE WHEN h.trangThai != 'DA_THANH_TOAN' THEN h.soTien ELSE 0 END), 0) AS tienConNo,
-                               COUNT(CASE WHEN h.trangThai = 'CHUA_THANH_TOAN' THEN 1 END) AS soChuaThanhToan,
-                               COUNT(CASE WHEN h.trangThai = 'DA_THANH_TOAN' THEN 1 END) AS soDaThanhToan
+                               COALESCE(SUM(CASE WHEN h.trangThai = com.university.enums.HocPhiEnum.DA_THANH_TOAN THEN h.soTien ELSE 0.0 END), 0) AS tienDaThu,
+                               COALESCE(SUM(CASE WHEN h.trangThai <> com.university.enums.HocPhiEnum.DA_THANH_TOAN THEN h.soTien ELSE 0.0 END), 0) AS tienConNo,
+                               COUNT(CASE WHEN h.trangThai = com.university.enums.HocPhiEnum.CHUA_THANH_TOAN THEN 1 END) AS soChuaThanhToan,
+                               COUNT(CASE WHEN h.trangThai = com.university.enums.HocPhiEnum.DA_THANH_TOAN THEN 1 END) AS soDaThanhToan
                         FROM HocPhi h
                         GROUP BY h.hocKi.id, h.hocKi.maHocKi, h.hocKi.tenHocKi, h.hocKi.ngayBatDau
                         ORDER BY h.hocKi.ngayBatDau DESC
@@ -79,11 +82,12 @@ public interface HocPhiAdminRepository extends JpaRepository<HocPhi, UUID> {
                                MONTH(t.ngayThanhToan) AS thang,
                                COUNT(h) AS soLuong,
                                COALESCE(SUM(h.soTien), 0) AS tongTien,
-                               COALESCE(SUM(CASE WHEN h.trangThai = 'DA_THANH_TOAN' THEN h.soTien ELSE 0 END), 0) AS tienDaThu
+                               COALESCE(SUM(CASE WHEN h.trangThai = com.university.enums.HocPhiEnum.DA_THANH_TOAN THEN h.soTien ELSE 0.0 END), 0) AS tienDaThu
                         FROM HocPhi h
-                        LEFT JOIN h.thanhToanHocPhi t
+                        JOIN h.thanhToanHocPhi t
+                        WHERE t.ngayThanhToan IS NOT NULL
                         GROUP BY YEAR(t.ngayThanhToan), MONTH(t.ngayThanhToan)
-                        ORDER BY nam DESC, thang DESC
+                        ORDER BY YEAR(t.ngayThanhToan) DESC, MONTH(t.ngayThanhToan) DESC
                         """)
         List<HocPhiAdminResponseDTO.DashboardTheoThang> getDashboardTheoThang();
 
@@ -94,18 +98,18 @@ public interface HocPhiAdminRepository extends JpaRepository<HocPhi, UUID> {
                                COALESCE(SUM(h.soTien), 0) AS soTienNo,
                                COUNT(h) AS soLanNo
                         FROM HocPhi h
-                        WHERE h.trangThai != 'DA_THANH_TOAN'
+                        WHERE h.trangThai <> com.university.enums.HocPhiEnum.DA_THANH_TOAN
                         GROUP BY h.hocVien.id, h.hocVien.users.hoTen, h.hocVien.maHocVien
-                        ORDER BY soTienNo DESC
+                        ORDER BY COALESCE(SUM(h.soTien), 0) DESC
                         """)
         List<HocPhiAdminResponseDTO.DashboardTopNo> getDashboardTopNo();
 
         @Query("""
                         SELECT COUNT(h) AS tongSoHocPhi,
                                COALESCE(SUM(h.soTien), 0) AS tongSoTien,
-                               COUNT(CASE WHEN h.trangThai = 'CHUA_THANH_TOAN' THEN 1 END) AS soChuaThanhToan,
-                               COUNT(CASE WHEN h.trangThai = 'DA_THANH_TOAN' THEN 1 END) AS soDaThanhToan,
-                               COUNT(CASE WHEN h.trangThai = 'QUA_HAN' THEN 1 END) AS soQuaHan
+                               COUNT(CASE WHEN h.trangThai = com.university.enums.HocPhiEnum.CHUA_THANH_TOAN THEN 1 END) AS soChuaThanhToan,
+                               COUNT(CASE WHEN h.trangThai = com.university.enums.HocPhiEnum.DA_THANH_TOAN THEN 1 END) AS soDaThanhToan,
+                               COUNT(CASE WHEN h.trangThai = com.university.enums.HocPhiEnum.QUA_HAN THEN 1 END) AS soQuaHan
                         FROM HocPhi h
                         """)
         HocPhiAdminResponseDTO.DashboardTongQuan getDashboardTongQuan();

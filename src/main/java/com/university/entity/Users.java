@@ -88,7 +88,15 @@ public class Users implements UserDetails {
 
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
-    return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+    if (dUserRoles == null || dUserRoles.isEmpty()) {
+      return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+    return dUserRoles.stream()
+        .map(ur -> {
+          String roleName = ur.getRole().getMaRole();
+          return new SimpleGrantedAuthority(roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName);
+        })
+        .toList();
   }
 
   @Override

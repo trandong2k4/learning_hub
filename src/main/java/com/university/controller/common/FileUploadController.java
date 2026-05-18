@@ -75,27 +75,29 @@ public class FileUploadController {
             throw new IllegalArgumentException("Định dạng file không được hỗ trợ.");
         }
 
-        S3StorageService.StoredObject storedObject = s3StorageService.upload(file, extension);
+        StoredUpload storedUpload = store(file, extension);
 
         FileStorage metadata = new FileStorage();
-        metadata.setFileName(storedObject.storedName());
-        metadata.setFileType(resolveFileType(extension, storedObject.contentType()));
-        metadata.setFileSize((float) storedObject.size());
-        metadata.setFileUrl(storedObject.key());
+        metadata.setFileName(storedUpload.storedName());
+        metadata.setFileType(resolveFileType(extension, storedUpload.contentType()));
+        metadata.setFileSize((float) storedUpload.size());
+        metadata.setFileUrl(storedUpload.storagePath());
         metadata.setUsers(resolveCurrentUser());
         metadata.setCreatedAt(LocalDateTime.now());
 
         FileStorage saved = fileStorageRepository.save(metadata);
-        String downloadUrl = "/api/files/" + saved.getId() + "/download";
+        String downloadUrl = storedUpload.local()
+                ? "/api/files/" + storedUpload.storedName()
+                : "/api/files/" + saved.getId() + "/download";
 
         return ResponseEntity.ok(new FileUploadResponseDTO(
                 saved.getId(),
-                storedObject.storedName(),
+                storedUpload.storedName(),
                 originalName,
                 downloadUrl,
-                storedObject.key(),
-                file.getSize(),
-                file.getContentType()));
+                storedUpload.storagePath(),
+                storedUpload.size(),
+                storedUpload.contentType()));
     }
 
     @GetMapping("/{fileId}/download")
@@ -122,6 +124,12 @@ public class FileUploadController {
 
     @GetMapping("/{fileName:.+}")
     public ResponseEntity<Resource> view(@PathVariable String fileName) throws MalformedURLException {
+        Path root = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path filePath = root.resolve(fileName).normalize();
+        if (filePath.startsWith(root) && Files.exists(filePath)) {
+            return serveLocalFile(filePath);
+        }
+
         var storageFile = fileStorageRepository.findByFileName(fileName);
         if (storageFile.isPresent()) {
             FileStorage fileStorage = storageFile.get();
@@ -136,12 +144,14 @@ public class FileUploadController {
                     .body((Resource) new InputStreamResource(stream));
         }
 
-        Path root = Paths.get(uploadDir).toAbsolutePath().normalize();
-        Path filePath = root.resolve(fileName).normalize();
         if (!filePath.startsWith(root) || !Files.exists(filePath)) {
             return ResponseEntity.notFound().build();
         }
 
+        return serveLocalFile(filePath);
+    }
+
+    private ResponseEntity<Resource> serveLocalFile(Path filePath) throws MalformedURLException {
         Resource resource = new UrlResource(filePath.toUri());
         String contentType;
         try {
@@ -162,6 +172,16 @@ public class FileUploadController {
     private String getExtension(String fileName) {
         int idx = fileName.lastIndexOf('.');
         return idx >= 0 && idx < fileName.length() - 1 ? fileName.substring(idx + 1) : "";
+    }
+
+    private StoredUpload store(MultipartFile file, String extension) throws IOException {
+        S3StorageService.StoredObject storedObject = s3StorageService.upload(file, extension);
+        return new StoredUpload(
+                storedObject.storedName(),
+                storedObject.key(),
+                storedObject.size(),
+                storedObject.contentType(),
+                false);
     }
 
     private Users resolveCurrentUser() {
@@ -188,5 +208,13 @@ public class FileUploadController {
             return FileEnum.OTHER;
         }
         return FileEnum.OTHER;
+    }
+
+    private record StoredUpload(
+            String storedName,
+            String storagePath,
+            long size,
+            String contentType,
+            boolean local) {
     }
 }

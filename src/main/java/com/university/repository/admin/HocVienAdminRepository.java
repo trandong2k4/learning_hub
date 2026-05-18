@@ -5,6 +5,7 @@ import com.university.entity.HocVien;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -35,6 +36,9 @@ public interface HocVienAdminRepository extends JpaRepository<HocVien, UUID> {
     void deleteAllByIdIn(List<UUID> ids);
 
     boolean existsByUsersId(UUID usersId);
+
+    @Query("SELECT DISTINCT hv.users.id FROM HocVien hv WHERE hv.users.id IN :userIds")
+    List<UUID> findUserIdsAssignedToHocVien(@Param("userIds") List<UUID> userIds);
 
     List<HocVien> findAllByNganhId(UUID nganhId);
 

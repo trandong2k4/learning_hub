@@ -25,14 +25,20 @@ public class QuizAttemptLog {
     @Enumerated(EnumType.STRING)
     private AttemptActionEnum action;
 
+    @Column(columnDefinition = "TEXT")
     private String value; // key dap an
+
+    @Column(columnDefinition = "TEXT")
+    private String eventData;
+
+    private String ipAddress;
 
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "questions_id", nullable = false)
+    @JoinColumn(name = "questions_id", nullable = true)
     private Questions questions;
 
     @ManyToOne(fetch = FetchType.LAZY)

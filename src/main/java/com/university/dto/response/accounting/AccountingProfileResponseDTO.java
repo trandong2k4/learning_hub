@@ -28,4 +28,13 @@ public class AccountingProfileResponseDTO {
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDateTime ngayNhanViec;
+
+    private String cccd;
+
+    private String avatarUrl;
+
+    public String getCccd() {
+        if (cccd == null || cccd.length() < 4) return "****";
+        return "*".repeat(cccd.length() - 4) + cccd.substring(cccd.length() - 4);
+    }
 }

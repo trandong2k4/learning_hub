@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/student/tailieu")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('STUDENT')")
+@PreAuthorize("hasAuthority('ROLE_student')")
 @RequirePermission("STU_DOC_LIST_VIEW")
 public class TaiLieuStudentsController {
 

@@ -165,9 +165,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         @ExceptionHandler(SimpleMessageException.class)
         public ProblemDetail handleSimpleMessage(SimpleMessageException ex, WebRequest request) {
-                ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
-                pd.setTitle("Not Found");
-                pd.setType(URI.create("https://university.com/errors/not-found"));
+                ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+                pd.setTitle("Bad Request");
+                pd.setType(URI.create("https://university.com/errors/bad-request"));
                 pd.setProperty("timestamp", Instant.now());
                 pd.setInstance(URI.create(request.getDescription(false)));
                 return pd;

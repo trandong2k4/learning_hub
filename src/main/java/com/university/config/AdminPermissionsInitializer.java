@@ -32,7 +32,7 @@ public class AdminPermissionsInitializer {
 
     @Bean
     public ApplicationRunner adminPermissionsRunner(
-            @Value("${app.permissions.auto-assign:true}") boolean autoAssign) {
+            @Value("${app.permissions.auto-assign:false}") boolean autoAssign) {
         return args -> {
             log.info("=== Initializing Admin Permissions ===");
 
@@ -86,7 +86,7 @@ public class AdminPermissionsInitializer {
 
             // 6. Lay permission IDs da gan cho role nay - 1 query
             List<UUID> permIds = allPermissions.stream().map(Permissions::getId).toList();
-            Set<UUID> assignedIds = rolePermissionsRepository.findAssignedPermissionsIds(permIds);
+            Set<UUID> assignedIds = rolePermissionsRepository.findAssignedPermissionsIdsByRoleId(adminRole.getId(), permIds);
 
             // 7. Tao nhung RolePermissions chua co - 1 query saveAll
             List<RolePermissions> toAssign = Arrays.stream(AdminPermission.values())

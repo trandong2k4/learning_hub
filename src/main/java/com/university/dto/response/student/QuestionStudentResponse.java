@@ -9,6 +9,8 @@ import java.util.UUID;
 public class QuestionStudentResponse {
     private UUID id;
     private String content;
+    private Boolean loaiCauHoi;
+    private Float diem;
 
     private List<AnswerStudentResponse> answers;
 }

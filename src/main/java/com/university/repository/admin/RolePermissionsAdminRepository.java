@@ -37,6 +37,15 @@ public interface RolePermissionsAdminRepository extends JpaRepository<RolePermis
     Set<UUID> findAssignedPermissionsIds(@Param("permissionsIds") List<UUID> permissionsIds);
 
     @Query("""
+            SELECT DISTINCT rp.permissions.id
+            FROM RolePermissions rp
+            WHERE rp.role.id = :roleId
+            AND rp.permissions.id IN :permissionsIds
+        """)
+    Set<UUID> findAssignedPermissionsIdsByRoleId(@Param("roleId") UUID roleId,
+            @Param("permissionsIds") List<UUID> permissionsIds);
+
+    @Query("""
             SELECT new com.university.dto.response.admin.RolePermissionsAdminResponseDTO(
                 rp.id,
                 p.id,

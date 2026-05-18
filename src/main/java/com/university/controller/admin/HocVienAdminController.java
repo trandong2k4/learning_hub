@@ -4,6 +4,7 @@ import com.university.annotation.RequirePermission;
 import com.university.dto.request.admin.HocVienAdminRequestDTO;
 import com.university.dto.request.admin.warrap.HocVienCreateRequestDTO;
 import com.university.dto.request.admin.warrap.HocVienFullCreateRequestDTO;
+import com.university.dto.response.admin.BatchDeleteResultDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.HocVienAdminResponseDTO;
 import com.university.dto.response.admin.UsersAdminResponseDTO;
@@ -16,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -81,18 +81,25 @@ public class HocVienAdminController {
     }
 
     @DeleteMapping("/delete-list")
-    public ResponseEntity<Void> deleteList(@RequestBody List<UUID> ids) {
-        hocVienAdminService.deleteAllByList(ids);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<BatchDeleteResultDTO> deleteList(@RequestBody List<UUID> ids) {
+        BatchDeleteResultDTO result = hocVienAdminService.deleteAllByList(ids);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/import-excel")
-    public ResponseEntity<ExcelImportResult> importExcel(@RequestParam("file") MultipartFile file)
-            throws IOException {
+    public ResponseEntity<ExcelImportResult> importExcel(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(null);
+            ExcelImportResult err = new ExcelImportResult();
+            err.setMessage("File không được để trống");
+            return ResponseEntity.badRequest().body(err);
         }
-        ExcelImportResult result = hocVienAdminService.importFromExcel(file);
-        return ResponseEntity.ok(result);
+        try {
+            ExcelImportResult result = hocVienAdminService.importFromExcel(file);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            ExcelImportResult err = new ExcelImportResult();
+            err.setMessage("Lỗi khi import Excel: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
+        }
     }
 }

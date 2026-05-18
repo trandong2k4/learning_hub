@@ -4,6 +4,7 @@ import com.university.annotation.RequirePermission;
 import com.university.dto.request.lecturer.AssignmentRequestDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.lecturer.AssignmentResponseDTO;
+import com.university.dto.response.lecturer.SubmissionDetailResponseDTO;
 import com.university.dto.response.lecturer.SubmissionResponseDTO;
 import com.university.service.lecturer.LecturerAssignmentService;
 import jakarta.validation.Valid;
@@ -62,7 +63,7 @@ public class LecturerAssignmentController {
 
     @DeleteMapping("/assignments/{assignmentId}")
     @PreAuthorize("@permissionService.hasPermission(#userId, 'LECTURER_ASSESSMENT')")
-    public ResponseEntity<Void> deleteAssignment(
+    public ResponseEntity<String> deleteAssignment(
             @PathVariable UUID assignmentId,
             @RequestParam UUID userId) {
         assignmentService.deleteAssignment(userId, assignmentId);
@@ -84,6 +85,14 @@ public class LecturerAssignmentController {
             @PathVariable UUID submissionId,
             @RequestParam UUID userId) {
         return ResponseEntity.ok(assignmentService.getSubmissionDetail(submissionId, userId));
+    }
+
+    @GetMapping("/submissions/{submissionId}/detail-full")
+    @PreAuthorize("@permissionService.hasPermission(#userId, 'LECTURER_ASSESSMENT')")
+    public ResponseEntity<SubmissionDetailResponseDTO> getSubmissionDetailFull(
+            @PathVariable UUID submissionId,
+            @RequestParam UUID userId) {
+        return ResponseEntity.ok(assignmentService.getSubmissionDetailFull(submissionId, userId));
     }
 
     @PutMapping("/submissions/{submissionId}/grade")

@@ -25,4 +25,7 @@ public interface DanhGiaGiangVienAdminRepository extends JpaRepository<DanhGiaGi
     void deleteAllByIdIn(List<UUID> ids);
 
     boolean existsByNhanVienId(UUID nhanVienId);
+
+    @Query("SELECT DISTINCT d.nhanVien.id FROM DanhGiaGiangVien d WHERE d.nhanVien.id IN :nhanVienIds")
+    List<UUID> findNhanVienIdsHavingDanhGia(@org.springframework.data.repository.query.Param("nhanVienIds") List<UUID> nhanVienIds);
 }

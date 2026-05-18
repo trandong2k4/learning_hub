@@ -37,6 +37,7 @@ public class SubmitExercise {
 
     private Integer phienThucHien;
 
+    @Column(nullable = true)
     private String fileExerciseUrl;
 
     private LocalDateTime thoiGianNop;

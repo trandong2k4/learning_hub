@@ -3,14 +3,15 @@ package com.university.controller.lecturer;
 import com.university.annotation.RequirePermission;
 import com.university.dto.request.lecturer.CreateCotDiemRequestDTO;
 import com.university.dto.request.lecturer.GradeRequestDTO;
+import com.university.dto.response.lecturer.GradeColumnDTO;
 import com.university.dto.response.lecturer.GradeHistoryResponseDTO;
 import com.university.dto.response.lecturer.GradeResponseDTO;
-import com.university.entity.CotDiem;
 import com.university.service.lecturer.LecturerGradeHistoryService;
 import com.university.service.lecturer.LecturerGradeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,10 +47,10 @@ public class LecturerGradeController {
 
     @PostMapping("/grades/columns")
     @PreAuthorize("@permissionService.hasPermission(#userId, 'LECTURER_ASSESSMENT')")
-    public ResponseEntity<CotDiem> createCotDiem(
+    public ResponseEntity<GradeColumnDTO> createCotDiem(
             @RequestParam UUID userId,
             @Valid @RequestBody CreateCotDiemRequestDTO request) {
-        return ResponseEntity.ok(gradeService.createCotDiem(userId, request));
+        throw new AccessDeniedException("Giảng viên không được thêm cột điểm");
     }
 
     @GetMapping("/grades/{lopHocPhanId}/history/{hocVienId}")

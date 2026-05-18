@@ -9,9 +9,12 @@ import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.lecturer.AnswerResponseDTO;
 import com.university.dto.response.lecturer.AssignmentResponseDTO;
 import com.university.dto.response.lecturer.QuestionResponseDTO;
+import com.university.dto.response.lecturer.SubmissionDetailResponseDTO;
 import com.university.dto.response.lecturer.SubmissionResponseDTO;
 import com.university.entity.Answers;
+import com.university.entity.DiemThanhPhan;
 import com.university.entity.Exercise;
+import com.university.entity.ExerciseSubmitAnswer;
 import com.university.entity.HocVien;
 import com.university.entity.LopHocPhan;
 import com.university.entity.Questions;
@@ -21,8 +24,10 @@ import com.university.repository.admin.LopHocPhanAdminRepository;
 import com.university.repository.admin.UsersAdminRepository;
 import com.university.repository.lecturer.LecturerAnswersRepository;
 import com.university.repository.lecturer.LecturerAssignmentRepository;
+import com.university.repository.lecturer.LecturerDiemThanhPhanRepository;
 import com.university.repository.lecturer.LecturerQuestionRepository;
 import com.university.repository.lecturer.LecturerSubmitExerciseRepository;
+import com.university.repository.student.ExerciseSubmitAnswerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +56,8 @@ public class LecturerAssignmentService {
         private final LecturerSubmitExerciseRepository submitExerciseRepository;
         private final LecturerQuestionRepository questionRepository;
         private final LecturerAnswersRepository answersRepository;
+        private final LecturerDiemThanhPhanRepository diemThanhPhanRepository;
+        private final ExerciseSubmitAnswerRepository exerciseSubmitAnswerRepository;
         private final LopHocPhanAdminRepository lopHocPhanRepository;
         private final UsersAdminRepository userRepository;
         private final LecturerNotificationService notificationService;
@@ -58,11 +65,33 @@ public class LecturerAssignmentService {
 
         public List<AssignmentResponseDTO> getAssignments(UUID lopHocPhanId, UUID userId) {
                 validationService.validateLecturerAssignment(userId, lopHocPhanId);
-                return assignmentRepository.findByLopHocPhan_Id(lopHocPhanId).stream()
+
+                List<Exercise> exercises = assignmentRepository.findByLopHocPhan_Id(lopHocPhanId);
+                if (exercises.isEmpty()) {
+                        return List.of();
+                }
+
+                List<UUID> exerciseIds = exercises.stream().map(Exercise::getId).toList();
+
+                List<Object[]> countRows = submitExerciseRepository.countByExercise_IdIn(exerciseIds);
+                Map<UUID, Long> submissionCounts = countRows.stream()
+                                .collect(Collectors.toMap(
+                                        row -> (UUID) row[0],
+                                        row -> (Long) row[1]));
+
+                List<Questions> allQuestions = questionRepository.findByExerciseIdsWithAnswers(exerciseIds);
+                Map<UUID, List<Questions>> questionsByExercise = allQuestions.stream()
+                                .collect(Collectors.groupingBy(q -> q.getExercise().getId()));
+
+                return exercises.stream()
                                 .map(exercise -> {
-                                        int submissionCount = submitExerciseRepository
-                                                        .countByExercise_Id(exercise.getId());
-                                        return toAssignmentResponse(exercise, submissionCount, true);
+                                        int submissionCount = submissionCounts
+                                                        .getOrDefault(exercise.getId(), 0L).intValue();
+                                        List<QuestionResponseDTO> questions = questionsByExercise
+                                                        .getOrDefault(exercise.getId(), List.of()).stream()
+                                                        .map(this::toQuestionResponseFromEntity)
+                                                        .collect(Collectors.toList());
+                                        return toAssignmentResponse(exercise, submissionCount, questions);
                                 })
                                 .collect(Collectors.toList());
         }
@@ -82,9 +111,14 @@ public class LecturerAssignmentService {
                                 ? request.getThoiGianKetThuc()
                                 : startTime.plusWeeks(1);
                 validateTimeRange(startTime, endTime);
+                String title = request.getTieuDe().trim();
+                if (assignmentRepository.existsByLopHocPhan_IdAndTieuDeAndThoiGianBatDauAndThoiGianKetThuc(
+                                request.getLopHocPhanId(), title, startTime, endTime)) {
+                        throw new IllegalArgumentException("Bài tập này đã được tạo. Vui lòng kiểm tra danh sách bài tập.");
+                }
 
                 Exercise exercise = new Exercise();
-                exercise.setTieuDe(request.getTieuDe().trim());
+                exercise.setTieuDe(title);
                 exercise.setMoTa(trimToNull(request.getMoTa()));
                 exercise.setFileExerciseUrl(trimToNull(request.getFileExerciseUrl()));
                 exercise.setLopHocPhan(lopHocPhan);
@@ -133,7 +167,11 @@ public class LecturerAssignmentService {
                         saved.getDQuestions().clear();
                         saveQuestions(saved, request.getQuestions());
                 }
-                return toAssignmentResponse(saved, submissionCount, true);
+                List<Questions> questions = questionRepository.findByExerciseIdsWithAnswers(List.of(saved.getId()));
+                List<QuestionResponseDTO> questionDTOs = questions.stream()
+                                .map(this::toQuestionResponseFromEntity)
+                                .collect(Collectors.toList());
+                return toAssignmentResponse(saved, submissionCount, questionDTOs);
         }
 
         public ExcelImportResult importAssignmentsFromExcel(UUID userId, UUID lopHocPhanId, MultipartFile file)
@@ -218,6 +256,13 @@ public class LecturerAssignmentService {
                 Exercise existing = assignmentRepository.findById(assignmentId)
                                 .orElseThrow(() -> new IllegalArgumentException("Bài tập không tồn tại."));
                 validationService.validateLecturerAssignment(userId, existing.getLopHocPhan().getId());
+
+                int submissionCount = submitExerciseRepository.countByExercise_Id(assignmentId);
+                if (submissionCount > 0) {
+                        throw new IllegalStateException(
+                                "Không thể xóa bài tập vì đã có " + submissionCount + " bài nộp. Vui lòng xóa các bài nộp trước.");
+                }
+
                 assignmentRepository.delete(existing);
         }
 
@@ -229,12 +274,20 @@ public class LecturerAssignmentService {
                         throw new IllegalArgumentException("Bài tập không thuộc lớp học phần này.");
                 }
 
-                List<SubmitExercise> submissions = submitExerciseRepository.findByExercise_Id(exerciseId);
+                List<SubmitExercise> submissions = submitExerciseRepository.findByExercise_IdWithHocVien(exerciseId);
+                if (submissions.isEmpty()) {
+                        return List.of();
+                }
+
+                List<UUID> hocVienIds = submissions.stream()
+                                .map(s -> s.getHocVien().getId()).distinct().toList();
+                Map<UUID, Float> grades = buildAverageGrades(lopHocPhanId, hocVienIds);
+
                 return submissions.stream()
                                 .map(submission -> {
                                         HocVien hocVien = submission.getHocVien();
                                         Users user = hocVien.getUsers();
-                                        Float grade = validationService.findAverageGrade(lopHocPhanId, hocVien.getId());
+                                        Float grade = grades.getOrDefault(hocVien.getId(), null);
                                         return new SubmissionResponseDTO(submission.getId(),
                                                         exercise.getId(),
                                                         exercise.getTieuDe(), hocVien.getId(), user.getHoTen(),
@@ -270,6 +323,77 @@ public class LecturerAssignmentService {
                 submission.setDiem(diem);
                 submission.setGhiChu(feedback);
                 submitExerciseRepository.save(submission);
+        }
+
+        public SubmissionDetailResponseDTO getSubmissionDetailFull(UUID submissionId, UUID userId) {
+                SubmitExercise submission = submitExerciseRepository.findById(submissionId)
+                                .orElseThrow(() -> new IllegalArgumentException("Bài nộp không tồn tại."));
+                Exercise exercise = submission.getExercise();
+                validationService.validateLecturerAssignment(userId, exercise.getLopHocPhan().getId());
+
+                HocVien hocVien = submission.getHocVien();
+                Users user = hocVien.getUsers();
+                Float grade = validationService.findAverageGrade(exercise.getLopHocPhan().getId(), hocVien.getId());
+
+                List<ExerciseSubmitAnswer> submitAnswers = exerciseSubmitAnswerRepository
+                                .findBySubmissionIdWithQuestions(submissionId);
+
+                List<SubmissionDetailResponseDTO.QuestionAnswerDTO> answers = submitAnswers.stream()
+                                .map(sa -> buildQuestionAnswer(sa))
+                                .collect(Collectors.toList());
+
+                return new SubmissionDetailResponseDTO(
+                                submission.getId(),
+                                exercise.getId(),
+                                exercise.getTieuDe(),
+                                hocVien.getId(),
+                                user.getHoTen(),
+                                hocVien.getMaHocVien(),
+                                submission.getFileExerciseUrl(),
+                                submission.getThoiGianNop(),
+                                grade,
+                                submission.getGhiChu(),
+                                answers);
+        }
+
+        private SubmissionDetailResponseDTO.QuestionAnswerDTO buildQuestionAnswer(ExerciseSubmitAnswer sa) {
+                Questions question = sa.getQuestions();
+                List<Answers> allOptions = question.getDAnswers();
+
+                if (Boolean.TRUE.equals(question.getLoaiCauHoi())) {
+                        // Multiple choice
+                        List<SubmissionDetailResponseDTO.AnswerOptionDTO> options = allOptions.stream()
+                                        .map(a -> new SubmissionDetailResponseDTO.AnswerOptionDTO(
+                                                        a.getId(),
+                                                        a.getConText(),
+                                                        a.getIsCorrect(),
+                                                        sa.getAnswers() != null && sa.getAnswers().getId().equals(a.getId())))
+                                        .collect(Collectors.toList());
+                        return new SubmissionDetailResponseDTO.QuestionAnswerDTO(
+                                        question.getId(),
+                                        question.getNoiDung(),
+                                        question.getLoaiCauHoi(),
+                                        question.getNhieuDapAn(),
+                                        question.getDiem(),
+                                        sa.getDiemDatDuoc(),
+                                        null,
+                                        options,
+                                        sa.getAnswers() != null ? sa.getAnswers().getId() : null,
+                                        sa.getIsCorrect());
+                } else {
+                        // Essay / file
+                        return new SubmissionDetailResponseDTO.QuestionAnswerDTO(
+                                        question.getId(),
+                                        question.getNoiDung(),
+                                        question.getLoaiCauHoi(),
+                                        question.getNhieuDapAn(),
+                                        question.getDiem(),
+                                        sa.getDiemDatDuoc(),
+                                        sa.getNoiDungTuLuan(),
+                                        null,
+                                        null,
+                                        sa.getIsCorrect());
+                }
         }
 
         private List<QuestionResponseDTO> saveQuestions(Exercise exercise, List<QuestionRequestDTO> questionRequests) {
@@ -418,15 +542,6 @@ public class LecturerAssignmentService {
                 return question;
         }
 
-        private AssignmentResponseDTO toAssignmentResponse(Exercise exercise, int submissionCount, boolean includeQuestions) {
-                List<QuestionResponseDTO> questions = includeQuestions
-                                ? questionRepository.findByExercise_Id(exercise.getId()).stream()
-                                                .map(this::toQuestionResponse)
-                                                .collect(Collectors.toList())
-                                : null;
-                return toAssignmentResponse(exercise, submissionCount, questions);
-        }
-
         private AssignmentResponseDTO toAssignmentResponse(Exercise exercise, int submissionCount,
                         List<QuestionResponseDTO> questions) {
                 int questionCount = questions != null ? questions.size()
@@ -437,8 +552,8 @@ public class LecturerAssignmentService {
                                 questionCount, questions, exercise.getGioiHanLanLam());
         }
 
-        private QuestionResponseDTO toQuestionResponse(Questions question) {
-                List<AnswerResponseDTO> answers = answersRepository.findByQuestions_Id(question.getId()).stream()
+        private QuestionResponseDTO toQuestionResponseFromEntity(Questions question) {
+                List<AnswerResponseDTO> answers = question.getDAnswers().stream()
                                 .map(answer -> new AnswerResponseDTO(answer.getId(), answer.getKeyAnswers(),
                                                 answer.getConText(), answer.getIsCorrect()))
                                 .collect(Collectors.toList());
@@ -569,5 +684,74 @@ public class LecturerAssignmentService {
 
         private String trimToEmpty(String value) {
                 return value == null ? "" : value.trim();
+        }
+
+        private Map<UUID, Float> buildAverageGrades(UUID lopHocPhanId, List<UUID> hocVienIds) {
+                if (hocVienIds == null || hocVienIds.isEmpty()) {
+                        return Map.of();
+                }
+
+                List<DiemThanhPhan> allGrades = diemThanhPhanRepository
+                                .findByLopHocPhanIdWithRelations(lopHocPhanId);
+
+                Map<UUID, Map<UUID, DiemThanhPhan>> latestByHocVienAndColumn = new LinkedHashMap<>();
+                for (DiemThanhPhan grade : allGrades) {
+                        UUID hvId = grade.getDangKyTinChi().getHocVien().getId();
+                        if (!hocVienIds.contains(hvId)) {
+                                continue;
+                        }
+                        UUID colId = grade.getCotDiem() != null ? grade.getCotDiem().getId() : null;
+                        if (colId == null) {
+                                continue;
+                        }
+                        latestByHocVienAndColumn
+                                        .computeIfAbsent(hvId, k -> new LinkedHashMap<>())
+                                        .putIfAbsent(colId, grade);
+                }
+
+                Map<UUID, Float> results = new LinkedHashMap<>();
+                for (UUID hocVienId : hocVienIds) {
+                        Map<UUID, DiemThanhPhan> columnGrades = latestByHocVienAndColumn.get(hocVienId);
+                        if (columnGrades == null || columnGrades.isEmpty()) {
+                                results.put(hocVienId, null);
+                                continue;
+                        }
+
+                        double weightedSum = 0d;
+                        double totalWeight = 0d;
+                        boolean hasValidGrade = false;
+                        for (DiemThanhPhan grade : columnGrades.values()) {
+                                if (grade.getDiemSo() == null) {
+                                        continue;
+                                }
+                                double weight = parseGradeWeight(grade.getCotDiem().getTiTrong());
+                                if (weight <= 0d) {
+                                        continue;
+                                }
+                                weightedSum += grade.getDiemSo() * weight;
+                                totalWeight += weight;
+                                hasValidGrade = true;
+                        }
+
+                        if (!hasValidGrade || totalWeight == 0d) {
+                                results.put(hocVienId, null);
+                        } else {
+                                results.put(hocVienId, (float) Math.round((weightedSum / totalWeight) * 100.0d) / 100.0f);
+                        }
+                }
+                return results;
+        }
+
+        private double parseGradeWeight(String tiTrong) {
+                if (tiTrong == null || tiTrong.isBlank()) {
+                        return 0d;
+                }
+                String normalized = tiTrong.trim().replace("%", "").replace(",", ".");
+                try {
+                        double parsed = Double.parseDouble(normalized);
+                        return parsed > 1d ? parsed / 100d : parsed;
+                } catch (NumberFormatException ex) {
+                        return 0d;
+                }
         }
 }

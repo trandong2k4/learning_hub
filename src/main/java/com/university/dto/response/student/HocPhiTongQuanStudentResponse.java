@@ -13,4 +13,8 @@ public class HocPhiTongQuanStudentResponse {
     private Double tongDaThanhToan;
     private Double tongQuaHan;
     private List<HocPhiStudentItemResponse> danhSachHocPhi;
+
+    private String maHocVien;
+    private String hoTen;
+    private String tenNganh;
 }

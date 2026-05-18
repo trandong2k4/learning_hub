@@ -60,10 +60,28 @@ public class HocPhiStudentService {
                 .mapToDouble(HocPhi::getSoTien)
                 .sum();
 
+        // Thông tin sinh viên (dùng cho hóa đơn PDF)
+        String maHocVien = "";
+        String hoTen = "";
+        String tenNganh = "";
+        if (!hocPhiList.isEmpty()) {
+            var hv = hocPhiList.get(0).getHocVien();
+            maHocVien = hv.getMaHocVien() != null ? hv.getMaHocVien() : "";
+            if (hv.getUsers() != null && hv.getUsers().getHoTen() != null) {
+                hoTen = hv.getUsers().getHoTen();
+            }
+            if (hv.getNganh() != null && hv.getNganh().getTenNganh() != null) {
+                tenNganh = hv.getNganh().getTenNganh();
+            }
+        }
+
         return HocPhiTongQuanStudentResponse.builder()
                 .tongCanThanhToan(tongCanThanhToan)
                 .tongDaThanhToan(tongDaThanhToan)
                 .tongQuaHan(tongQuaHan)
+                .maHocVien(maHocVien)
+                .hoTen(hoTen)
+                .tenNganh(tenNganh)
                 .danhSachHocPhi(hocPhiList.stream()
                         .map(this::toHocPhiItemResponse)
                         .toList())

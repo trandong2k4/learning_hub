@@ -19,6 +19,7 @@ import com.university.repository.lecturer.LecturerDiemThanhPhanRepository;
 import com.university.repository.lecturer.LecturerGradeRepository;
 import com.university.repository.lecturer.LecturerLichSuDiemRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -42,7 +44,7 @@ public class LecturerGradeService {
         private final LecturerNotificationService notificationService;
         private final LecturerValidationService validationService;
 
-        public CotDiem createCotDiem(UUID userId, CreateCotDiemRequestDTO request) {
+        public GradeColumnDTO createCotDiem(UUID userId, CreateCotDiemRequestDTO request) {
                 LopHocPhan lopHocPhan = lopHocPhanRepository.findById(UUID.fromString(request.getLopHocPhanId()))
                                 .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học phần."));
                 validationService.validateLecturerAssignment(userId, lopHocPhan.getId());
@@ -53,11 +55,17 @@ public class LecturerGradeService {
                 cotDiem.setLoai(request.getLoai());
                 cotDiem.setThuTuHienThi(request.getThuTuHienThi() != null ? request.getThuTuHienThi() : 1);
                 cotDiem.setLopHocPhan(lopHocPhan);
-                return gradeRepository.save(cotDiem);
+                CotDiem saved = gradeRepository.save(cotDiem);
+                return new GradeColumnDTO(saved.getId(), saved.getTenCotDiem(), saved.getTiTrong(),
+                                saved.getLoai() != null ? saved.getLoai().name() : null,
+                                saved.getThuTuHienThi());
         }
 
         public GradeResponseDTO getGrades(UUID lopHocPhanId, UUID userId) {
                 validationService.validateLecturerAssignment(userId, lopHocPhanId);
+
+                LopHocPhan lopHocPhan = lopHocPhanRepository.findById(lopHocPhanId)
+                                .orElseThrow(() -> new RuntimeException("Không tìm thấy lớp học phần."));
 
                 List<CotDiem> cotDiems = gradeRepository.findByLopHocPhan_Id(lopHocPhanId);
                 List<GradeColumnDTO> columns = cotDiems.stream()
@@ -67,6 +75,8 @@ public class LecturerGradeService {
                                 .collect(Collectors.toList());
 
                 List<DiemThanhPhan> allGrades = diemThanhPhanRepository.findByDangKyTinChi_LopHocPhan_Id(lopHocPhanId);
+
+                // Pre-group grades by hocVienId for in-memory average calculation (avoids N+1)
                 Map<UUID, List<DiemThanhPhan>> gradesByHocVien = allGrades.stream()
                                 .collect(Collectors.groupingBy(dtp -> dtp.getDangKyTinChi().getHocVien().getId()));
 
@@ -92,15 +102,66 @@ public class LecturerGradeService {
                                                                                 cd.getThuTuHienThi());
                                                         })
                                                         .collect(Collectors.toList());
-                                        Float diemTrungBinh = validationService.findAverageGrade(lopHocPhanId,
-                                                        hocVien.getId());
+                                        // Compute average in-memory from pre-loaded grades
+                                        Float diemTrungBinh = computeAverageGrade(
+                                                        gradesByHocVien.getOrDefault(hocVien.getId(), List.of()),
+                                                        cotDiems);
+                                        String hoTen = hocVien.getUsers() != null ? hocVien.getUsers().getHoTen() : "";
                                         return new GradeStudentResponseDTO(hocVien.getId(),
-                                                        hocVien.getUsers().getHoTen(),
+                                                        hoTen,
                                                         hocVien.getMaHocVien(), diemTrungBinh, diemThanhPhan);
                                 })
                                 .collect(Collectors.toList());
 
                 return new GradeResponseDTO(lopHocPhanId, columns, students);
+        }
+
+        /**
+         * Compute weighted average from already-loaded DiemThanhPhan list.
+         * Avoids per-student repository calls.
+         */
+        private Float computeAverageGrade(List<DiemThanhPhan> grades, List<CotDiem> allCotDiems) {
+                if (grades.isEmpty()) {
+                        return null;
+                }
+                Map<UUID, CotDiem> cotDiemMap = allCotDiems.stream()
+                                .collect(Collectors.toMap(CotDiem::getId, cd -> cd));
+                double weightedSum = 0d;
+                double totalWeight = 0d;
+                boolean hasValid = false;
+                for (DiemThanhPhan grade : grades) {
+                        if (grade.getDiemSo() == null) {
+                                continue;
+                        }
+                        CotDiem cd = cotDiemMap.get(grade.getCotDiem().getId());
+                        if (cd == null) {
+                                continue;
+                        }
+                        double weight = parseWeight(cd.getTiTrong());
+                        if (weight <= 0d) {
+                                continue;
+                        }
+                        weightedSum += grade.getDiemSo() * weight;
+                        totalWeight += weight;
+                        hasValid = true;
+                }
+                if (!hasValid || totalWeight == 0d) {
+                        return null;
+                }
+                return (float) Math.round((weightedSum / totalWeight) * 100.0d) / 100.0f;
+        }
+
+        private double parseWeight(String tiTrong) {
+                if (tiTrong == null || tiTrong.isBlank()) {
+                        return 0d;
+                }
+                String normalized = tiTrong.trim().replace("%", "").replace(",", ".");
+                try {
+                        double parsed = Double.parseDouble(normalized);
+                        return parsed > 1d ? parsed / 100d : parsed;
+                } catch (NumberFormatException ex) {
+                        return 0d;
+                }
         }
 
         public void updateGrades(UUID userId, UUID lopHocPhanId, Map<String, Float> studentGrades) {
@@ -118,52 +179,78 @@ public class LecturerGradeService {
 
                 List<CotDiem> cotDiems = gradeRepository.findByLopHocPhan_Id(lopHocPhanId);
 
+                // Pre-load all DangKyTinChi and DiemThanhPhan to avoid N+1
+                List<DangKyTinChi> registrations = dangKyTinChiRepository.findByLopHocPhan_Id(lopHocPhanId);
+                List<DiemThanhPhan> existingGrades = diemThanhPhanRepository.findByDangKyTinChi_LopHocPhan_Id(lopHocPhanId);
+
+                Map<UUID, DangKyTinChi> regByHocVien = registrations.stream()
+                                .collect(Collectors.toMap(reg -> reg.getHocVien().getId(), reg -> reg));
+                Map<String, DiemThanhPhan> gradeKeyMap = existingGrades.stream()
+                                .collect(Collectors.toMap(
+                                        g -> g.getDangKyTinChi().getHocVien().getId() + "|" + g.getCotDiem().getId(),
+                                        g -> g));
+
+                final UUID finalLopHocPhanId = lopHocPhanId;
+                final Users finalLecturer = lecturer;
+                final LopHocPhan finalLopHocPhan = lopHocPhan;
+                final List<CotDiem> finalCotDiems = cotDiems;
+
                 studentGrades.forEach((key, diem) -> {
-                        if (diem == null)
-                                return;
                         String[] parts = key.split("\\|");
                         if (parts.length != 2)
                                 return;
                         UUID hocVienId = UUID.fromString(parts[0]);
                         UUID cotDiemId = UUID.fromString(parts[1]);
 
-                        if (!cotDiems.stream().anyMatch(cd -> cd.getId().equals(cotDiemId)))
+                        if (!finalCotDiems.stream().anyMatch(cd -> cd.getId().equals(cotDiemId)))
                                 return;
 
-                        DangKyTinChi registration = dangKyTinChiRepository
-                                        .findByHocVien_IdAndLopHocPhan_Id(hocVienId, lopHocPhanId)
-                                        .orElseThrow(() -> new RuntimeException(
-                                                        "Sinh viên không ghi danh hoặc không thuộc lớp."));
-                        DiemThanhPhan diemThanhPhan = diemThanhPhanRepository
-                                        .findByDangKyTinChi_HocVien_IdAndCotDiem_Id(hocVienId, cotDiemId)
-                                        .orElseGet(() -> {
-                                                DiemThanhPhan newEntity = new DiemThanhPhan();
-                                                newEntity.setDangKyTinChi(registration);
-                                                newEntity.setCotDiem(cotDiems.stream()
-                                                                .filter(cd -> cd.getId().equals(cotDiemId)).findFirst()
-                                                                .get());
-                                                newEntity.setLanNhap(0);
-                                                return newEntity;
-                                        });
+                        DangKyTinChi registration = regByHocVien.get(hocVienId);
+                        if (registration == null)
+                                return;
+
+                        DiemThanhPhan diemThanhPhan = gradeKeyMap.get(key);
+                        if (diem == null && diemThanhPhan == null)
+                                return;
+
+                        if (diemThanhPhan == null) {
+                                diemThanhPhan = new DiemThanhPhan();
+                                diemThanhPhan.setDangKyTinChi(registration);
+                                diemThanhPhan.setCotDiem(finalCotDiems.stream()
+                                                .filter(cd -> cd.getId().equals(cotDiemId)).findFirst().get());
+                                diemThanhPhan.setLanNhap(0);
+                        }
 
                         Float diemCu = diemThanhPhan.getDiemSo();
+                        if (diem == null && diemCu == null)
+                                return;
+
                         diemThanhPhan.setDiemSo(diem);
                         diemThanhPhan.setLanNhap(
                                         diemThanhPhan.getLanNhap() != null ? diemThanhPhan.getLanNhap() + 1 : 1);
                         diemThanhPhan.setUpdatedAt(LocalDateTime.now());
-                        diemThanhPhanRepository.save(diemThanhPhan);
+                        DiemThanhPhan saved = diemThanhPhanRepository.save(diemThanhPhan);
 
                         LichSuDiem history = new LichSuDiem();
                         history.setDiemCu(diemCu != null ? diemCu : 0f);
-                        history.setDiemMoi(diem);
+                        history.setDiemMoi(diem != null ? diem : 0f);
                         history.setThoiGianThayDoi(LocalDateTime.now());
-                        history.setNguoiThayDoi(lecturer);
-                        history.setDiemThanhPhan(diemThanhPhan);
+                        history.setNguoiThayDoi(finalLecturer);
+                        history.setDiemThanhPhan(saved);
                         lichSuDiemRepository.save(history);
 
-                        notificationService.sendToStudent(lecturer, registration.getHocVien().getUsers(),
-                                        "Có điểm mới: " + lopHocPhan.getMonHoc().getTenMonHoc(),
-                                        "Giảng viên " + lecturer.getHoTen() + " đã chấm điểm cho bạn. Điểm: " + diem);
+                        try {
+                                UUID studentUserId = registration.getHocVien().getUsers().getId();
+                                notificationService.sendToStudentAsync(
+                                                finalLecturer.getId(),
+                                                studentUserId,
+                                                "Có điểm mới: " + finalLopHocPhan.getMonHoc().getTenMonHoc(),
+                                                "Giảng viên " + finalLecturer.getHoTen()
+                                                                + (diem != null ? " đã chấm điểm cho bạn. Điểm: " + diem
+                                                                                : " đã xóa điểm của bạn."));
+                        } catch (Exception e) {
+                                log.warn("Không thể gửi thông báo điểm cho học viên {}: {}", hocVienId, e.getMessage());
+                        }
                 });
         }
 }

@@ -14,7 +14,9 @@ import com.university.repository.lecturer.LecturerDangKyTinChiRepository;
 import com.university.repository.lecturer.LecturerNotificationRepository;
 import com.university.repository.lecturer.LecturerThongBaoNguoiDungRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -90,7 +92,29 @@ public class LecturerNotificationService {
         sendToClassStudents(saved, lopHocPhanId);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void sendToStudent(Users sender, Users student, String title, String content) {
+        ThongBao thongBao = new ThongBao();
+        thongBao.setTieuDe(title);
+        thongBao.setNoiDung(content);
+        thongBao.setLoaiThongBao(LoaiThongBaoEnum.THONG_BAO_GIANG_VIEN);
+        thongBao.setUsers(sender);
+        ThongBao saved = thongBaoRepository.save(thongBao);
+
+        ThongBaoNguoiDung tnd = new ThongBaoNguoiDung();
+        tnd.setUsers(student);
+        tnd.setThongBao(saved);
+        tnd.setDaNhan(false);
+        thongBaoNguoiDungRepository.save(tnd);
+    }
+
+    @Async
+    @Transactional
+    public void sendToStudentAsync(UUID senderId, UUID studentId, String title, String content) {
+        Users sender = userRepository.findById(senderId).orElse(null);
+        Users student = userRepository.findById(studentId).orElse(null);
+        if (sender == null || student == null) return;
+
         ThongBao thongBao = new ThongBao();
         thongBao.setTieuDe(title);
         thongBao.setNoiDung(content);

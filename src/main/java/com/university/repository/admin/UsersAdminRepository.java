@@ -54,26 +54,25 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
     List<String> findAllCccds();
 
     @Query("""
-             SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(
-                 u.id,
-                 u.userName,
-                 u.passWord,
-                 u.email,
-                 u.cccd,
-                 u.hoTen,
-                 u.diaChi,
-                 u.gioiTinh,
-                 u.ngaySinh,
-                 u.soDienThoai,
-                 u.trangThai,
-                 u.ghiChu,
-                 u.createAt,
-                 u.updateAt
-             )
+             SELECT
+                 u.id as id,
+                 u.userName as userName,
+                 u.passWord as passWord,
+                 u.email as email,
+                 u.cccd as cccd,
+                 u.hoTen as hoTen,
+                 u.diaChi as diaChi,
+                 u.gioiTinh as gioiTinh,
+                 u.ngaySinh as ngaySinh,
+                 u.soDienThoai as soDienThoai,
+                 u.trangThai as trangThai,
+                 u.ghiChu as ghiChu,
+                 u.createAt as createAt,
+                 u.updateAt as updateAt
              FROM Users u
              WHERE u.userName = :username
             """)
-    UsersAdminResponseDTO findByUserNameDTO(@Param("username") String username);
+    UsersAdminResponseDTO.UsersBasicProjection findByUserNameDTO(@Param("username") String username);
 
     @Query("""
                 SELECT DISTINCT new com.university.dto.response.auth.AuthResponseDTO(r.maRole, p.maPermissions)
@@ -105,69 +104,66 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
     Optional<Users> findByUsernameWithRoles(String username);
 
     @Query("""
-             SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(
-                 u.id,
-                 u.userName,
-                 u.passWord,
-                 u.email,
-                 u.cccd,
-                 u.hoTen,
-                 u.diaChi,
-                 u.gioiTinh,
-                 u.ngaySinh,
-                 u.soDienThoai,
-                 u.trangThai,
-                 u.ghiChu,
-                 u.createAt,
-                 u.updateAt
-             )
+             SELECT
+                 u.id as id,
+                 u.userName as userName,
+                 u.passWord as passWord,
+                 u.email as email,
+                 u.cccd as cccd,
+                 u.hoTen as hoTen,
+                 u.diaChi as diaChi,
+                 u.gioiTinh as gioiTinh,
+                 u.ngaySinh as ngaySinh,
+                 u.soDienThoai as soDienThoai,
+                 u.trangThai as trangThai,
+                 u.ghiChu as ghiChu,
+                 u.createAt as createAt,
+                 u.updateAt as updateAt
              FROM Users u
             """)
-    List<UsersAdminResponseDTO> findAllDTO();
+    List<UsersAdminResponseDTO.UsersBasicProjection> findAllDTO();
 
     @Query("""
-             SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(
-                 u.id,
-                 u.userName,
-                 u.passWord,
-                 u.email,
-                 u.cccd,
-                 u.hoTen,
-                 u.diaChi,
-                 u.gioiTinh,
-                 u.ngaySinh,
-                 u.soDienThoai,
-                 u.trangThai,
-                 u.ghiChu,
-                 u.createAt,
-                 u.updateAt
-             )
+             SELECT
+                 u.id as id,
+                 u.userName as userName,
+                 u.passWord as passWord,
+                 u.email as email,
+                 u.cccd as cccd,
+                 u.hoTen as hoTen,
+                 u.diaChi as diaChi,
+                 u.gioiTinh as gioiTinh,
+                 u.ngaySinh as ngaySinh,
+                 u.soDienThoai as soDienThoai,
+                 u.trangThai as trangThai,
+                 u.ghiChu as ghiChu,
+                 u.createAt as createAt,
+                 u.updateAt as updateAt
              FROM Users u
              WHERE u.id = :usersId
             """)
-    UsersAdminResponseDTO findUsersById(@Param("usersId") UUID usersId);
+    UsersAdminResponseDTO.UsersBasicProjection findUsersById(@Param("usersId") UUID usersId);
 
     @Query("""
-            SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(
-                 u.id,
-                 u.userName,
-                 u.passWord,
-                 u.email,
-                 u.cccd,
-                 u.hoTen,
-                 u.diaChi,
-                 u.gioiTinh,
-                 u.ngaySinh,
-                 u.soDienThoai,
-                 u.trangThai,
-                 u.ghiChu,
-                 u.createAt,
-                 u.updateAt
-             )
+            SELECT
+                 u.id as id,
+                 u.userName as userName,
+                 u.passWord as passWord,
+                 u.email as email,
+                 u.cccd as cccd,
+                 u.hoTen as hoTen,
+                 u.diaChi as diaChi,
+                 u.gioiTinh as gioiTinh,
+                 u.ngaySinh as ngaySinh,
+                 u.soDienThoai as soDienThoai,
+                 u.trangThai as trangThai,
+                 u.ghiChu as ghiChu,
+                 u.createAt as createAt,
+                 u.updateAt as updateAt
              FROM Users u
              WHERE LOWER(u.hoTen) LIKE LOWER(CONCAT('%', :keyword, '%'))
             """)
-    List<UsersAdminResponseDTO> findUsersByHoTen(@Param("keyword") String keyword);
+    List<UsersAdminResponseDTO.UsersBasicProjection> findUsersByHoTen(@Param("keyword") String keyword);
 
     @Query("""
              SELECT
@@ -189,22 +185,21 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
     UserView findByView(@Param("usersId") UUID usersId);
 
     @Query("""
-            SELECT new com.university.dto.response.admin.UsersAdminResponseDTO(
-                u.id,
-                u.userName,
-                u.passWord,
-                u.email,
-                u.cccd,
-                u.hoTen,
-                u.diaChi,
-                u.gioiTinh,
-                u.ngaySinh,
-                u.soDienThoai,
-                u.trangThai,
-                u.ghiChu,
-                u.createAt,
-                u.updateAt
-            )
+            SELECT
+                u.id as id,
+                u.userName as userName,
+                u.passWord as passWord,
+                u.email as email,
+                u.cccd as cccd,
+                u.hoTen as hoTen,
+                u.diaChi as diaChi,
+                u.gioiTinh as gioiTinh,
+                u.ngaySinh as ngaySinh,
+                u.soDienThoai as soDienThoai,
+                u.trangThai as trangThai,
+                u.ghiChu as ghiChu,
+                u.createAt as createAt,
+                u.updateAt as updateAt
             FROM Users u
             WHERE u.id NOT IN (
                 SELECT nv.users.id FROM NhanVien nv WHERE nv.users IS NOT NULL
@@ -214,7 +209,7 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
             )
             ORDER BY u.hoTen ASC
             """)
-    List<UsersAdminResponseDTO> findAllUsersNotAssigned();
+    List<UsersAdminResponseDTO.UsersBasicProjection> findAllUsersNotAssigned();
 
     void deleteAllByIdIn(List<UUID> ids);
 
@@ -234,4 +229,21 @@ public interface UsersAdminRepository extends JpaRepository<Users, UUID> {
                 WHERE r.id = :roleId
             """)
     List<UUID> findUserIdsByRoleId(@Param("roleId") UUID roleId);
+
+    @Query("""
+            SELECT r.maRole
+            FROM Users u
+            LEFT JOIN u.dUserRoles d
+            LEFT JOIN d.role r
+            WHERE u.id = :userId
+            """)
+    List<String> findRolesByUserId(@Param("userId") UUID userId);
+
+    @Query("""
+            SELECT u.id, r.maRole
+            FROM Users u
+            LEFT JOIN u.dUserRoles d
+            LEFT JOIN d.role r
+            """)
+    List<Object[]> findAllUserIdAndRoles();
 }

@@ -46,4 +46,7 @@ public class HocVienExcelDTO {
     @NotBlank(message = "Mã ngành không được để trống")
     @ExcelProperty(index = 10)
     private String maNganh;
+
+    @ExcelProperty(index = 11)
+    private String maRole;
 }

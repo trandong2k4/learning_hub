@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/student/dashboard")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('STUDENT')")
+@PreAuthorize("hasAuthority('ROLE_student')")
 @RequirePermission("STU_DASH_LEARN_PROGRESS")
 public class DashboardStudentController {
 

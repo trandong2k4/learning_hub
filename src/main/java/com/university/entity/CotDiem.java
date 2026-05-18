@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.university.converter.CotDiemEnumConverter;
 import com.university.enums.CotDiemEnum;
 
 import jakarta.persistence.*;
@@ -27,6 +28,8 @@ public class CotDiem {
     @Column(length = 10, nullable = false)
     private String tiTrong;
 
+    @Convert(converter = CotDiemEnumConverter.class)
+    @Column(length = 20)
     private CotDiemEnum loai;
 
     private Integer thuTuHienThi;

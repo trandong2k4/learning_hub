@@ -1,5 +1,9 @@
 package com.university.service.student;
 
+import com.university.dto.request.student.QuizAnswerSaveItemRequest;
+import com.university.dto.request.student.QuizAttemptEventRequest;
+import com.university.dto.request.student.QuizAutoSaveRequest;
+import com.university.dto.response.student.QuizAttemptStudentResponse;
 import com.university.dto.response.student.QuizDetailStudentResponse;
 import com.university.dto.response.student.QuizListStudentResponse;
 import com.university.dto.response.student.QuizResultStudentResponse;
@@ -27,7 +31,14 @@ public interface QuizStudentService {
     // 📌 Bắt đầu làm bài
     QuizStartStudentResponse startQuiz(UUID quizId);
 
+    QuizAttemptStudentResponse getAttempt(UUID attemptId);
+
+    QuizAttemptStudentResponse autoSaveAnswers(UUID attemptId, QuizAutoSaveRequest request);
+
+    void logAttemptEvent(UUID attemptId, QuizAttemptEventRequest request);
+
     // 📌 Nộp bài
     QuizResultStudentResponse submitQuiz(UUID attemptId, Map<UUID, UUID> answers);
-}
 
+    QuizResultStudentResponse submitQuiz(UUID attemptId, List<QuizAnswerSaveItemRequest> answers);
+}

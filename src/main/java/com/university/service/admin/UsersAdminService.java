@@ -25,8 +25,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class UsersAdminService {
@@ -106,7 +111,10 @@ public class UsersAdminService {
             userRoleAdminRepository.save(userRole);
         }
 
-        return usersMapper.toResponseDTO(saved);
+        UsersAdminResponseDTO response = usersMapper.toResponseDTO(saved);
+        List<String> roles = usersAdminRepository.findRolesByUserId(saved.getId());
+        response.setRoles(roles);
+        return response;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -114,15 +122,37 @@ public class UsersAdminService {
     // ─────────────────────────────────────────────────────────────────────────
 
     public List<UsersAdminResponseDTO> getAll() {
-        return usersAdminRepository.findAllDTO();
+        List<UsersAdminResponseDTO.UsersBasicProjection> projections = usersAdminRepository.findAllDTO();
+
+        // Batch load all roles in ONE query to avoid N+1
+        Map<UUID, List<String>> allRolesMap = new java.util.HashMap<>();
+        List<Object[]> allRolesData = usersAdminRepository.findAllUserIdAndRoles();
+        for (Object[] row : allRolesData) {
+            UUID userId = (UUID) row[0];
+            String maRole = (String) row[1];
+            if (maRole != null) {
+                allRolesMap.computeIfAbsent(userId, k -> new ArrayList<>()).add(maRole);
+            }
+        }
+
+        List<UsersAdminResponseDTO> result = new ArrayList<>();
+        for (UsersAdminResponseDTO.UsersBasicProjection p : projections) {
+            UsersAdminResponseDTO dto = toDTO(p);
+            dto.setRoles(allRolesMap.getOrDefault(dto.getId(), new ArrayList<>()));
+            result.add(dto);
+        }
+        return result;
     }
 
     public UsersAdminResponseDTO getById(UUID id) {
-        UsersAdminResponseDTO user = usersAdminRepository.findUsersById(id);
-        if (user == null) {
+        UsersAdminResponseDTO.UsersBasicProjection p = usersAdminRepository.findUsersById(id);
+        if (p == null) {
             throw new EntityNotFoundException("Người dùng với id '" + id + "' không tồn tại");
         }
-        return user;
+        UsersAdminResponseDTO dto = toDTO(p);
+        List<String> roles = usersAdminRepository.findRolesByUserId(id);
+        dto.setRoles(roles);
+        return dto;
     }
 
     public UserView getByView(UUID id) {
@@ -130,11 +160,36 @@ public class UsersAdminService {
     }
 
     public List<UsersAdminResponseDTO> getByHoTen(String hoTen) {
-        return usersAdminRepository.findUsersByHoTen(hoTen);
+        List<UsersAdminResponseDTO.UsersBasicProjection> projections = usersAdminRepository.findUsersByHoTen(hoTen);
+
+        // Batch load all roles in ONE query to avoid N+1
+        Map<UUID, List<String>> allRolesMap = new java.util.HashMap<>();
+        List<Object[]> allRolesData = usersAdminRepository.findAllUserIdAndRoles();
+        for (Object[] row : allRolesData) {
+            UUID userId = (UUID) row[0];
+            String maRole = (String) row[1];
+            if (maRole != null) {
+                allRolesMap.computeIfAbsent(userId, k -> new ArrayList<>()).add(maRole);
+            }
+        }
+
+        List<UsersAdminResponseDTO> result = new ArrayList<>();
+        for (UsersAdminResponseDTO.UsersBasicProjection p : projections) {
+            UsersAdminResponseDTO dto = toDTO(p);
+            dto.setRoles(allRolesMap.getOrDefault(dto.getId(), new ArrayList<>()));
+            result.add(dto);
+        }
+        return result;
     }
 
     public UsersAdminResponseDTO getByUserName(String userName) {
-        return usersAdminRepository.findByUserNameDTO(userName);
+        UsersAdminResponseDTO.UsersBasicProjection p = usersAdminRepository.findByUserNameDTO(userName);
+        if (p == null) return null;
+        UsersAdminResponseDTO dto = toDTO(p);
+        UUID userId = p.getId();
+        List<String> roles = usersAdminRepository.findRolesByUserId(userId);
+        dto.setRoles(roles);
+        return dto;
     }
 
     public List<AuthResponseDTO> dSNameRoleUSers(UUID id) {
@@ -164,7 +219,10 @@ public class UsersAdminService {
 
         usersMapper.updateEntity(user, dto);
         usersAdminRepository.save(user);
-        return usersMapper.toResponseDTO(user);
+        UsersAdminResponseDTO response = usersMapper.toResponseDTO(user);
+        List<String> roles = usersAdminRepository.findRolesByUserId(id);
+        response.setRoles(roles);
+        return response;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -181,34 +239,28 @@ public class UsersAdminService {
 
     @Transactional
     public BatchDeleteResultDTO deleteAllByList(List<UUID> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return BatchDeleteResultDTO.success(0);
-        }
+        if (ids == null || ids.isEmpty()) return BatchDeleteResultDTO.success(0);
+
+        Map<UUID, Users> userMap = usersAdminRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Users::getId, Function.identity()));
+        Set<UUID> isHocVien = new HashSet<>(hocVienAdminRepository.findUserIdsAssignedToHocVien(ids));
+        Set<UUID> isNhanVien = new HashSet<>(nhanVienAdminRepository.findUserIdsAssignedToNhanVien(ids));
 
         List<UUID> deletableIds = new ArrayList<>();
         List<FailedUserDTO> failedUsers = new ArrayList<>();
 
         for (UUID id : ids) {
-            if (!usersAdminRepository.existsById(id)) {
-                failedUsers.add(FailedUserDTO.builder()
-                        .id(id)
-                        .hoTen(null)
-                        .reason("Người dùng không tồn tại")
-                        .build());
+            if (!userMap.containsKey(id)) {
+                failedUsers.add(FailedUserDTO.builder().id(id).hoTen(null).reason("Người dùng không tồn tại").build());
                 continue;
             }
+            String hoTen = userMap.get(id).getHoTen();
+            String reason = null;
+            if (isHocVien.contains(id)) reason = "Người dùng đang là học viên. Vui lòng xóa hồ sơ học viên trước.";
+            else if (isNhanVien.contains(id)) reason = "Người dùng đang là nhân viên. Vui lòng xóa hồ sơ nhân viên trước.";
 
-            String reason = getDeleteBlockReason(id);
-            if (reason != null) {
-                UsersAdminResponseDTO user = usersAdminRepository.findUsersById(id);
-                failedUsers.add(FailedUserDTO.builder()
-                        .id(id)
-                        .hoTen(user != null ? user.getHoTen() : null)
-                        .reason(reason)
-                        .build());
-            } else {
-                deletableIds.add(id);
-            }
+            if (reason != null) failedUsers.add(FailedUserDTO.builder().id(id).hoTen(hoTen).reason(reason).build());
+            else deletableIds.add(id);
         }
 
         if (!deletableIds.isEmpty()) {
@@ -233,16 +285,6 @@ public class UsersAdminService {
         }
     }
 
-    private String getDeleteBlockReason(UUID userId) {
-        if (hocVienAdminRepository.existsByUsersId(userId)) {
-            return "Người dùng đang là học viên. Vui lòng xóa hồ sơ học viên trước.";
-        }
-        if (nhanVienAdminRepository.existsByUsersId(userId)) {
-            return "Người dùng đang là nhân viên. Vui lòng xóa hồ sơ nhân viên trước.";
-        }
-        return null;
-    }
-
     private Role findRoleByMaRole(String maRole) {
         if (maRole == null || maRole.trim().isEmpty()) {
             return null;
@@ -251,5 +293,24 @@ public class UsersAdminService {
         String normalized = maRole.trim();
         return roleAdminRepository.findFirstByMaRoleIgnoreCase(normalized)
                 .orElseThrow(() -> new IllegalArgumentException("Vai trò '" + normalized + "' không tồn tại"));
+    }
+
+    private UsersAdminResponseDTO toDTO(UsersAdminResponseDTO.UsersBasicProjection p) {
+        UsersAdminResponseDTO dto = new UsersAdminResponseDTO();
+        dto.setId(p.getId());
+        dto.setUserName(p.getUserName());
+        dto.setPassWord(p.getPassWord());
+        dto.setEmail(p.getEmail());
+        dto.setCccd(p.getCccd());
+        dto.setHoTen(p.getHoTen());
+        dto.setDiaChi(p.getDiaChi());
+        dto.setGioiTinh(p.getGioiTinh());
+        dto.setNgaySinh(p.getNgaySinh());
+        dto.setSoDienThoai(p.getSoDienThoai());
+        dto.setTrangThai(p.getTrangThai());
+        dto.setGhiChu(p.getGhiChu());
+        dto.setCreateAt(p.getCreateAt());
+        dto.setUpdateAt(p.getUpdateAt());
+        return dto;
     }
 }

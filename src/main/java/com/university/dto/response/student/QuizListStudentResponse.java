@@ -16,4 +16,8 @@ public class QuizListStudentResponse {
 
     private QuizStatusEnum status; // UPCOMING | DOING | DONE | EXPIRED
     private Float score;
+    private Integer attemptCount;
+    private Integer maxAttempts;
+    private UUID inProgressAttemptId;
+    private Integer remainingTime;
 }

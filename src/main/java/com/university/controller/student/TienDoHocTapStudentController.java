@@ -21,7 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/student/learning-progress")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('STUDENT')")
+@PreAuthorize("hasAuthority('ROLE_student')")
 @RequirePermission("STU_DASH_LEARN_PROGRESS")
 public class TienDoHocTapStudentController {
 

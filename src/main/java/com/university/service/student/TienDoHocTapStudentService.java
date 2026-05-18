@@ -336,7 +336,7 @@ public class TienDoHocTapStudentService {
         }
 
         double weightedSum = 0d;
-        double totalWeight = 0d;
+        boolean hasValidGrade = false;
         for (DiemThanhPhan diemThanhPhan : latestByColumn.values()) {
             if (diemThanhPhan.getDiemSo() == null) {
                 continue;
@@ -346,14 +346,14 @@ public class TienDoHocTapStudentService {
                 continue;
             }
             weightedSum += diemThanhPhan.getDiemSo() * weight;
-            totalWeight += weight;
+            hasValidGrade = true;
         }
 
-        if (totalWeight <= 0d) {
+        if (!hasValidGrade) {
             return null;
         }
 
-        return roundToTwoDecimals(weightedSum / totalWeight);
+        return roundToTwoDecimals(weightedSum);
     }
 
     private double parseWeight(CotDiem cotDiem) {

@@ -3,6 +3,9 @@ package com.university.mapper.student;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
+import java.util.Random;
+import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 import com.university.dto.response.student.*;
@@ -38,6 +41,11 @@ public class QuizStudentMapper {
         dto.setStatus(status);
         if (attempt != null && Boolean.TRUE.equals(attempt.getStatus())) {
             dto.setScore(attempt.getScore());
+        }
+        dto.setMaxAttempts(quiz.getSoLanLam());
+        if (attempt != null && Boolean.FALSE.equals(attempt.getStatus())) {
+            dto.setInProgressAttemptId(attempt.getId());
+            dto.setRemainingTime(attempt.getRemainingTime());
         }
 
         // ⚠ GỢI Ý:
@@ -84,13 +92,15 @@ public class QuizStudentMapper {
 
         dto.setId(question.getId());
         dto.setContent(question.getNoiDung());
+        dto.setLoaiCauHoi(question.getLoaiCauHoi());
+        dto.setDiem(question.getDiem());
 
         if (question.getDAnswers() != null) {
             dto.setAnswers(
-                    question.getDAnswers()
+                    new java.util.ArrayList<>(question.getDAnswers()
                             .stream()
                             .map(this::toAnswerDTO)
-                            .toList());
+                            .toList()));
         }
 
         // ⚠ GỢI Ý:
@@ -136,8 +146,13 @@ public class QuizStudentMapper {
         QuizStartStudentResponse dto = new QuizStartStudentResponse();
 
         dto.setAttemptId(attempt.getId());
+        dto.setQuizId(attempt.getQuiz().getId());
         dto.setRemainingTime(attempt.getRemainingTime());
+        dto.setUsedTime(attempt.getUsedTime());
         dto.setStartTime(attempt.getStartTime());
+        dto.setQuestions(toQuestionDTOs(getQuestions(attempt), attempt.getQuiz()));
+        dto.setSelectedAnswers(selectedAnswers(attempt));
+        dto.setTextAnswers(textAnswers(attempt));
         
         // ⚠ GỢI Ý:
         // remainingTime = quiz.getThoiGianLam() * 60 (nếu tính bằng giây)
@@ -182,5 +197,58 @@ public class QuizStudentMapper {
         }
 
         return List.copyOf(questions.values());
+    }
+
+    public List<QuestionStudentResponse> toQuestionDTOs(List<Questions> questions, Quiz quiz) {
+        List<QuestionStudentResponse> dto = questions.stream()
+                .map(this::toQuestionDTO)
+                .toList();
+        if (Boolean.TRUE.equals(quiz.getShuffleAnswers())) {
+            dto.forEach(q -> {
+                if (q.getAnswers() != null) {
+                    Collections.shuffle(q.getAnswers(), new Random(q.getId().getLeastSignificantBits()));
+                }
+            });
+        }
+        if (Boolean.TRUE.equals(quiz.getShuffleQuestions())) {
+            dto = new java.util.ArrayList<>(dto);
+            Collections.shuffle(dto, new Random(quiz.getId().getLeastSignificantBits()));
+        }
+        return dto;
+    }
+
+    private List<Questions> getQuestions(QuizAttempt attempt) {
+        if ("random_question".equalsIgnoreCase(attempt.getQuiz().getQuizType())
+                && attempt.getDAttemptAnswers() != null
+                && !attempt.getDAttemptAnswers().isEmpty()) {
+            return attempt.getDAttemptAnswers().stream()
+                    .map(a -> a.getQuestions())
+                    .filter(q -> q != null && q.getId() != null)
+                    .distinct()
+                    .toList();
+        }
+        return getQuestions(attempt.getQuiz());
+    }
+
+    private Map<UUID, UUID> selectedAnswers(QuizAttempt attempt) {
+        Map<UUID, UUID> values = new LinkedHashMap<>();
+        if (attempt.getDAttemptAnswers() == null) {
+            return values;
+        }
+        attempt.getDAttemptAnswers().stream()
+                .filter(a -> a.getQuestions() != null && a.getAnswers() != null)
+                .forEach(a -> values.put(a.getQuestions().getId(), a.getAnswers().getId()));
+        return values;
+    }
+
+    private Map<UUID, String> textAnswers(QuizAttempt attempt) {
+        Map<UUID, String> values = new LinkedHashMap<>();
+        if (attempt.getDAttemptAnswers() == null) {
+            return values;
+        }
+        attempt.getDAttemptAnswers().stream()
+                .filter(a -> a.getQuestions() != null && a.getTextAnswer() != null)
+                .forEach(a -> values.put(a.getQuestions().getId(), a.getTextAnswer()));
+        return values;
     }
 }

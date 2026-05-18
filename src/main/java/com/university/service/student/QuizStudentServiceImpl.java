@@ -1,7 +1,12 @@
 package com.university.service.student;
 
+import com.university.dto.request.student.QuizAnswerSaveItemRequest;
+import com.university.dto.request.student.QuizAttemptEventRequest;
+import com.university.dto.request.student.QuizAutoSaveRequest;
+import com.university.dto.response.student.QuizAttemptStudentResponse;
 import com.university.dto.response.student.*;
 import com.university.entity.*;
+import com.university.enums.AttemptActionEnum;
 import com.university.enums.QuizStatusEnum;
 import com.university.exception.SimpleMessageException;
 import com.university.exception.students.AlreadySubmittedException;
@@ -16,6 +21,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -30,7 +36,10 @@ public class QuizStudentServiceImpl implements QuizStudentService {
     private final QuizRepository quizRepository;
     private final QuizAttemptRepository quizAttemptRepository;
     private final AttemptAnswersRepository attemptAnswersRepository;
+    private final AttemptAnswersLogRepository attemptAnswersLogRepository;
     private final AnswersRepository answersRepository;
+    private final QuestionsRepository questionsRepository;
+    private final QuizAttemptLogRepository quizAttemptLogRepository;
     private final UserRepository usersRepository;
     private final QuizStudentMapper mapper;
 
@@ -141,25 +150,29 @@ public class QuizStudentServiceImpl implements QuizStudentService {
 
         // 👉 3. Kiểm tra thời gian
         LocalDateTime now = LocalDateTime.now();
-        if (now.isBefore(quiz.getThoiGianBatDau())) {
+        if (quiz.getThoiGianBatDau() != null && now.isBefore(quiz.getThoiGianBatDau())) {
             throw new QuizNotOpenException("Quiz chưa bắt đầu");
         }
-        if (now.isAfter(quiz.getThoiGianKetThuc())) {
+        if (quiz.getThoiGianKetThuc() != null && now.isAfter(quiz.getThoiGianKetThuc())) {
             throw new QuizNotOpenException("Quiz đã kết thúc");
         }
 
-        // 👉 4. Kiểm tra đã nộp bài chưa
-        boolean daNop = quizAttemptRepository
-                .existsByQuiz_IdAndHocVien_IdAndStatusTrue(quizId, hocVien.getId());
-        if (daNop) {
-            throw new AlreadySubmittedException("Bạn đã hoàn thành quiz này rồi");
+        // 👉 4. Có attempt đang dở → trả về luôn, không tạo mới
+        Optional<QuizAttempt> attemptDangDo = quizAttemptRepository
+                .findOpenByQuizIdAndHocVienIdWithQuizAndHocVien(quizId, hocVien.getId());
+        if (attemptDangDo.isPresent()) {
+            QuizAttempt existing = attemptDangDo.get();
+            existing.setRemainingTime(calculateRemainingTime(quiz, existing));
+            existing.setUsedTime(calculateUsedTime(quiz, existing, existing.getRemainingTime()));
+            quizAttemptRepository.save(existing);
+            logAttempt(existing, AttemptActionEnum.RESUME, null, null, null);
+            return toQuizStartResponse(existing);
         }
 
-        // 👉 5. Có attempt đang dở → trả về luôn, không tạo mới
-        Optional<QuizAttempt> attemptDangDo = quizAttemptRepository
-                .findByQuiz_IdAndHocVien_IdAndStatusFalse(quizId, hocVien.getId());
-        if (attemptDangDo.isPresent()) {
-            return mapper.toQuizStartDTO(attemptDangDo.get());
+        // 👉 5. Kiểm tra số lần làm
+        long attemptCount = quizAttemptRepository.countByQuiz_IdAndHocVien_Id(quizId, hocVien.getId());
+        if (quiz.getSoLanLam() != null && quiz.getSoLanLam() > 0 && attemptCount >= quiz.getSoLanLam()) {
+            throw new AlreadySubmittedException("Bạn đã hết số lần làm bài kiểm tra này");
         }
 
         // 👉 6. Tạo attempt mới
@@ -168,106 +181,151 @@ public class QuizStudentServiceImpl implements QuizStudentService {
         attempt.setHocVien(hocVien);
         attempt.setStartTime(now);
         attempt.setStatus(false);
-        attempt.setRemainingTime(quiz.getThoiGianLam() * SECONDS_PER_MINUTE);
+        attempt.setAttemptNumber((int) attemptCount + 1);
+        attempt.setRemainingTime(quiz.getThoiGianLam() == null ? 0 : quiz.getThoiGianLam() * SECONDS_PER_MINUTE);
+        attempt.setUsedTime(0);
         quizAttemptRepository.save(attempt);
 
-        return mapper.toQuizStartDTO(attempt);
+        if ("random_question".equalsIgnoreCase(quiz.getQuizType())) {
+            createRandomQuestionSlots(attempt);
+        }
+
+        logAttempt(attempt, AttemptActionEnum.START, null, null, null);
+
+        return toQuizStartResponse(attempt);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public QuizAttemptStudentResponse getAttempt(UUID attemptId) {
+        HocVien hocVien = getCurrentHocVien();
+        QuizAttempt attempt = quizAttemptRepository.findByIdWithQuizAndHocVien(attemptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attempt", attemptId));
+        validateAttemptOwner(attempt, hocVien);
+        return toAttemptResponse(attempt);
+    }
+
+    @Override
+    @Transactional
+    public QuizAttemptStudentResponse autoSaveAnswers(UUID attemptId, QuizAutoSaveRequest request) {
+        HocVien hocVien = getCurrentHocVien();
+        QuizAttempt attempt = quizAttemptRepository.findByIdWithQuizAndHocVien(attemptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attempt", attemptId));
+        validateAttemptOwner(attempt, hocVien);
+        ensureAttemptOpen(attempt);
+
+        List<QuizAnswerSaveItemRequest> answers = request == null || request.getAnswers() == null
+                ? List.of()
+                : request.getAnswers();
+        saveAttemptAnswers(attempt, answers);
+
+        int remaining = calculateRemainingTime(attempt.getQuiz(), attempt);
+        attempt.setRemainingTime(remaining);
+        attempt.setUsedTime(request != null && request.getUsedTime() != null
+                ? request.getUsedTime()
+                : calculateUsedTime(attempt.getQuiz(), attempt, remaining));
+        quizAttemptRepository.save(attempt);
+        logAttempt(attempt, AttemptActionEnum.AUTO_SAVE, null, null, request != null ? request.getEventData() : null);
+        return toAttemptResponse(attempt);
+    }
+
+    @Override
+    @Transactional
+    public void logAttemptEvent(UUID attemptId, QuizAttemptEventRequest request) {
+        HocVien hocVien = getCurrentHocVien();
+        QuizAttempt attempt = quizAttemptRepository.findByIdWithQuizAndHocVien(attemptId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attempt", attemptId));
+        validateAttemptOwner(attempt, hocVien);
+
+        Questions question = null;
+        if (request != null && request.getQuestionId() != null) {
+            question = questionsRepository.findById(request.getQuestionId()).orElse(null);
+        }
+        AttemptActionEnum action = request != null && request.getAction() != null
+                ? request.getAction()
+                : AttemptActionEnum.NAVIGATE_TO;
+        logAttempt(attempt, action, question, request != null ? request.getValue() : null,
+                request != null ? request.getEventData() : null);
     }
 
     // ================================================================
     // 📌 6. NỘP BÀI
     // ================================================================
-    @SuppressWarnings("null")
     @Override
     @Transactional
     public QuizResultStudentResponse submitQuiz(UUID attemptId, Map<UUID, UUID> answers) {
-        Map<UUID, UUID> submittedAnswers = answers == null ? Map.of() : answers;
+        List<QuizAnswerSaveItemRequest> payload = answers == null
+                ? List.of()
+                : answers.entrySet().stream().map(entry -> {
+                    QuizAnswerSaveItemRequest item = new QuizAnswerSaveItemRequest();
+                    item.setQuestionId(entry.getKey());
+                    item.setAnswerId(entry.getValue());
+                    return item;
+                }).toList();
+        return submitQuiz(attemptId, payload);
+    }
 
-        // 👉 1. Lấy học viên từ JWT
+    @Override
+    @Transactional
+    public QuizResultStudentResponse submitQuiz(UUID attemptId, List<QuizAnswerSaveItemRequest> answers) {
         HocVien hocVien = getCurrentHocVien();
-
-        // 👉 2. Lấy attempt
-        QuizAttempt attempt = quizAttemptRepository.findById(attemptId)
+        QuizAttempt attempt = quizAttemptRepository.findByIdWithQuizAndHocVien(attemptId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attempt", attemptId));
+        validateAttemptOwner(attempt, hocVien);
+        ensureAttemptOpen(attempt);
 
-        // 👉 3. Kiểm tra quyền sở hữu
-        if (!attempt.getHocVien().getId().equals(hocVien.getId())) {
-            throw new SimpleMessageException("Bạn không có quyền nộp bài này");
-        }
+        saveAttemptAnswers(attempt, answers == null ? List.of() : answers);
 
-        // 👉 4. Kiểm tra đã nộp chưa
-        if (Boolean.TRUE.equals(attempt.getStatus())) {
-            throw new AlreadySubmittedException("Bài thi này đã được nộp rồi");
-        }
-
-        // 👉 5. Kiểm tra hết giờ
-        Quiz quiz = attempt.getQuiz();
-        if (LocalDateTime.now().isAfter(quiz.getThoiGianKetThuc())) {
-            throw new QuizNotOpenException("Đã hết thời gian làm bài");
-        }
-
-        // 👉 6. Load toàn bộ answers 1 lần — tránh N+1 query
-        Set<UUID> answerIds = submittedAnswers.values().stream()
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        Map<UUID, Answers> answerMap = answersRepository.findAllById(answerIds)
-                .stream()
-                .collect(Collectors.toMap(Answers::getId, a -> a));
-
-        // 👉 7. Tính điểm
+        List<Questions> quizQuestions = getQuestionsForAttempt(attempt);
         int correct = 0;
-        List<Questions> quizQuestions = getQuestions(quiz);
-        List<AttemptAnswers> attemptAnswerDetails = new ArrayList<>();
+        int autoGradable = 0;
+
+        Map<UUID, AttemptAnswers> answerByQuestion = attemptAnswersRepository
+                .findByQuizAttemptIdWithQuestionAnswerData(attempt.getId())
+                .stream()
+                .collect(Collectors.toMap(a -> a.getQuestions().getId(), a -> a, (a, b) -> a));
 
         for (Questions question : quizQuestions) {
-            UUID selectedAnswerId = submittedAnswers.get(question.getId());
-            if (selectedAnswerId == null) {
-                continue;
-            }
-
-            Answers answer = answerMap.get(selectedAnswerId);
-            boolean validAnswerForQuestion = answer != null
-                    && answer.getQuestions() != null
-                    && answer.getQuestions().getId().equals(question.getId());
-
-            if (!validAnswerForQuestion) {
-                continue;
-            }
-
-            AttemptAnswers detail = new AttemptAnswers();
-            detail.setQuizAttempt(attempt);
-            detail.setQuestions(question);
-            detail.setAnswers(answer);
-            attemptAnswerDetails.add(detail);
-
-            if (Boolean.TRUE.equals(answer.getIsCorrect())) {
-                correct++;
+            AttemptAnswers attemptAnswer = answerByQuestion.get(question.getId());
+            if (Boolean.TRUE.equals(question.getLoaiCauHoi())) {
+                autoGradable++;
+                boolean isCorrect = attemptAnswer != null
+                        && attemptAnswer.getAnswers() != null
+                        && Boolean.TRUE.equals(attemptAnswer.getAnswers().getIsCorrect());
+                if (attemptAnswer != null) {
+                    attemptAnswer.setIsCorrect(isCorrect);
+                    attemptAnswer.setScoreReceived(BigDecimal.valueOf(isCorrect ? (question.getDiem() == null ? 1f : question.getDiem()) : 0f));
+                    attemptAnswersRepository.save(attemptAnswer);
+                }
+                if (isCorrect) {
+                    correct++;
+                }
+            } else if (attemptAnswer != null) {
+                attemptAnswer.setIsCorrect(null);
+                attemptAnswer.setScoreReceived(null);
+                attemptAnswersRepository.save(attemptAnswer);
             }
         }
 
-        // 👉 8. Tính điểm thang 10, làm tròn 2 chữ số
         float score = 0f;
-        int total = quizQuestions.size();
-        if (total > 0) {
-            score = Math.round(((float) correct / total) * 10 * 100) / 100f;
+        if (autoGradable > 0) {
+            score = Math.round(((float) correct / autoGradable) * 10 * 100) / 100f;
         }
 
-        // 👉 9. Lưu kết quả
-        int remainingAtSubmit = calculateRemainingTime(quiz, attempt);
-        int fullDurationSeconds = quiz.getThoiGianLam() == null ? 0 : quiz.getThoiGianLam() * SECONDS_PER_MINUTE;
-        attemptAnswersRepository.deleteByQuizAttempt_Id(attempt.getId());
-        if (!attemptAnswerDetails.isEmpty()) {
-            attemptAnswersRepository.saveAll(attemptAnswerDetails);
-        }
+        int remainingAtSubmit = calculateRemainingTime(attempt.getQuiz(), attempt);
         attempt.setScore(score);
         attempt.setEndTime(LocalDateTime.now());
         attempt.setRemainingTime(remainingAtSubmit);
-        attempt.setUsedTime(fullDurationSeconds > 0 ? Math.max(0, fullDurationSeconds - remainingAtSubmit) : null);
+        attempt.setUsedTime(calculateUsedTime(attempt.getQuiz(), attempt, remainingAtSubmit));
         attempt.setStatus(true);
+        if (attempt.getQuiz().getPassScore() != null) {
+            attempt.setIsPassed(score * 10 >= attempt.getQuiz().getPassScore());
+        }
         quizAttemptRepository.save(attempt);
 
-        return mapper.toQuizResultDTO(attempt, correct, total);
+        logAttempt(attempt, remainingAtSubmit <= 0 ? AttemptActionEnum.TIMEOUT : AttemptActionEnum.SUBMIT, null, null, null);
+
+        return mapper.toQuizResultDTO(attempt, correct, quizQuestions.size());
     }
 
     private Map<UUID, QuizAttempt> getLatestAttemptsByQuiz(List<Quiz> quizzes, UUID hocVienId) {
@@ -279,7 +337,7 @@ public class QuizStudentServiceImpl implements QuizStudentService {
                 .map(Quiz::getId)
                 .toList();
 
-        return quizAttemptRepository.findByHocVien_IdAndQuiz_IdIn(hocVienId, quizIds)
+        return quizAttemptRepository.findByHocVienIdAndQuizIdsWithQuiz(hocVienId, quizIds)
                 .stream()
                 .collect(Collectors.toMap(
                         attempt -> attempt.getQuiz().getId(),
@@ -344,21 +402,254 @@ public class QuizStudentServiceImpl implements QuizStudentService {
     private List<Questions> getQuestions(Quiz quiz) {
         Map<UUID, Questions> questions = new LinkedHashMap<>();
 
-        if (quiz.getDQuizQuestions() != null) {
-            quiz.getDQuizQuestions().stream()
-                    .map(QuizQuestions::getQuestions)
-                    .filter(q -> q != null && q.getId() != null)
-                    .forEach(q -> questions.putIfAbsent(q.getId(), q));
+        if (quiz == null || quiz.getId() == null) {
+            return List.of();
         }
 
-        if (quiz.getDQuizExercises() != null) {
-            quiz.getDQuizExercises().stream()
-                    .filter(qe -> qe.getExercise() != null && qe.getExercise().getDQuestions() != null)
-                    .flatMap(qe -> qe.getExercise().getDQuestions().stream())
-                    .filter(q -> q != null && q.getId() != null)
-                    .forEach(q -> questions.putIfAbsent(q.getId(), q));
-        }
+        questionsRepository.findManualQuizQuestionsWithAnswers(quiz.getId()).stream()
+                .filter(q -> q != null && q.getId() != null)
+                .forEach(q -> questions.putIfAbsent(q.getId(), q));
+        questionsRepository.findExerciseQuizQuestionsWithAnswers(quiz.getId()).stream()
+                .filter(q -> q != null && q.getId() != null)
+                .forEach(q -> questions.putIfAbsent(q.getId(), q));
 
         return List.copyOf(questions.values());
+    }
+
+    private List<Questions> getQuestionsForAttempt(QuizAttempt attempt) {
+        return getQuestionsForAttempt(
+                attempt,
+                attemptAnswersRepository.findByQuizAttemptIdWithQuestionAnswerData(attempt.getId()));
+    }
+
+    private List<Questions> getQuestionsForAttempt(QuizAttempt attempt, List<AttemptAnswers> attemptAnswers) {
+        if ("random_question".equalsIgnoreCase(attempt.getQuiz().getQuizType())) {
+            List<Questions> randomQuestions = attemptAnswers
+                    .stream()
+                    .map(AttemptAnswers::getQuestions)
+                    .filter(q -> q != null && q.getId() != null)
+                    .distinct()
+                    .toList();
+            if (!randomQuestions.isEmpty()) {
+                return randomQuestions;
+            }
+        }
+        return getQuestions(attempt.getQuiz());
+    }
+
+    private QuizStartStudentResponse toQuizStartResponse(QuizAttempt attempt) {
+        List<AttemptAnswers> attemptAnswers = attemptAnswersRepository
+                .findByQuizAttemptIdWithQuestionAnswerData(attempt.getId());
+        List<Questions> questions = getQuestionsForAttempt(attempt, attemptAnswers);
+
+        QuizStartStudentResponse dto = new QuizStartStudentResponse();
+        dto.setAttemptId(attempt.getId());
+        dto.setQuizId(attempt.getQuiz().getId());
+        dto.setRemainingTime(attempt.getRemainingTime());
+        dto.setUsedTime(attempt.getUsedTime());
+        dto.setStartTime(attempt.getStartTime());
+        dto.setQuestions(mapper.toQuestionDTOs(questions, attempt.getQuiz()));
+        dto.setSelectedAnswers(toSelectedAnswers(attemptAnswers));
+        dto.setTextAnswers(toTextAnswers(attemptAnswers));
+        return dto;
+    }
+
+    private QuizAttemptStudentResponse toAttemptResponse(QuizAttempt attempt) {
+        List<AttemptAnswers> attemptAnswers = attemptAnswersRepository
+                .findByQuizAttemptIdWithQuestionAnswerData(attempt.getId());
+        List<Questions> questions = getQuestionsForAttempt(attempt, attemptAnswers);
+        int remaining = calculateRemainingTime(attempt.getQuiz(), attempt);
+        QuizAttemptStudentResponse dto = new QuizAttemptStudentResponse();
+        dto.setAttemptId(attempt.getId());
+        dto.setQuizId(attempt.getQuiz().getId());
+        dto.setTieuDe(attempt.getQuiz().getTieuDe());
+        dto.setRemainingTime(remaining);
+        dto.setUsedTime(calculateUsedTime(attempt.getQuiz(), attempt, remaining));
+        dto.setSubmitted(Boolean.TRUE.equals(attempt.getStatus()));
+        dto.setStartTime(attempt.getStartTime());
+        dto.setEndTime(attempt.getEndTime());
+        dto.setQuestions(mapper.toQuestionDTOs(questions, attempt.getQuiz()));
+        dto.setSelectedAnswers(toSelectedAnswers(attemptAnswers));
+        dto.setTextAnswers(toTextAnswers(attemptAnswers));
+        return dto;
+    }
+
+    private void createRandomQuestionSlots(QuizAttempt attempt) {
+        Quiz quiz = attempt.getQuiz();
+        int count = quiz.getRandomQuestionCount() == null || quiz.getRandomQuestionCount() <= 0
+                ? 0
+                : quiz.getRandomQuestionCount();
+        if (count == 0) {
+            return;
+        }
+
+        List<Boolean> questionTypes = parseQuestionTypes(quiz.getRandomQuestionTypes());
+        List<Questions> pool = questionTypes.isEmpty()
+                ? questionsRepository.findByExercise_LopHocPhan_Id(quiz.getLopHocPhan().getId())
+                : questionsRepository.findByExercise_LopHocPhan_IdAndLoaiCauHoiIn(quiz.getLopHocPhan().getId(), questionTypes);
+        if (pool.isEmpty()) {
+            throw new SimpleMessageException("Ngân hàng câu hỏi của lớp học phần chưa có câu hỏi phù hợp");
+        }
+
+        List<Questions> shuffled = new ArrayList<>(pool);
+        Collections.shuffle(shuffled, new Random(attempt.getId().getLeastSignificantBits()));
+        List<AttemptAnswers> slots = shuffled.stream()
+                .limit(Math.min(count, shuffled.size()))
+                .map(question -> {
+                    AttemptAnswers slot = new AttemptAnswers();
+                    slot.setQuizAttempt(attempt);
+                    slot.setQuestions(question);
+                    return slot;
+                })
+                .toList();
+        attemptAnswersRepository.saveAll(slots);
+        attempt.getDAttemptAnswers().addAll(slots);
+    }
+
+    private List<Boolean> parseQuestionTypes(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of(true, false);
+        }
+        List<Boolean> result = new ArrayList<>();
+        String normalized = raw.toLowerCase(Locale.ROOT);
+        if (normalized.contains("multiple_choice") || normalized.contains("trac") || normalized.contains("true")) {
+            result.add(true);
+        }
+        if (normalized.contains("essay") || normalized.contains("tu_luan") || normalized.contains("false")) {
+            result.add(false);
+        }
+        return result.stream().distinct().toList();
+    }
+
+    private void saveAttemptAnswers(QuizAttempt attempt, List<QuizAnswerSaveItemRequest> answers) {
+        if (answers == null || answers.isEmpty()) {
+            return;
+        }
+
+        List<UUID> payloadQuestionIds = answers.stream()
+                .filter(Objects::nonNull)
+                .map(QuizAnswerSaveItemRequest::getQuestionId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (payloadQuestionIds.isEmpty()) {
+            return;
+        }
+
+        Set<UUID> answerIds = answers.stream()
+                .map(QuizAnswerSaveItemRequest::getAnswerId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, Answers> answerMap = answerIds.isEmpty()
+                ? Map.of()
+                : answersRepository.findAllByIdWithQuestion(new ArrayList<>(answerIds)).stream()
+                .collect(Collectors.toMap(Answers::getId, a -> a));
+
+        Map<UUID, Questions> allowedQuestionMap = getQuestionsForAttempt(attempt).stream()
+                .collect(Collectors.toMap(Questions::getId, q -> q, (a, b) -> a, LinkedHashMap::new));
+
+        Map<UUID, AttemptAnswers> currentAnswers = attemptAnswersRepository
+                .findByQuizAttemptIdAndQuestionIdsWithAnswer(attempt.getId(), payloadQuestionIds)
+                .stream()
+                .filter(a -> a.getQuestions() != null)
+                .collect(Collectors.toMap(a -> a.getQuestions().getId(), a -> a, (a, b) -> a));
+
+        for (QuizAnswerSaveItemRequest item : answers) {
+            if (item == null || item.getQuestionId() == null) {
+                continue;
+            }
+
+            Questions question = allowedQuestionMap.get(item.getQuestionId());
+            if (question == null) {
+                continue;
+            }
+
+            Answers newAnswer = item.getAnswerId() == null ? null : answerMap.get(item.getAnswerId());
+            if (newAnswer != null && (newAnswer.getQuestions() == null
+                    || !newAnswer.getQuestions().getId().equals(question.getId()))) {
+                continue;
+            }
+
+            AttemptAnswers current = currentAnswers.computeIfAbsent(question.getId(), ignored -> {
+                        AttemptAnswers created = new AttemptAnswers();
+                        created.setQuizAttempt(attempt);
+                        created.setQuestions(question);
+                        return created;
+                    });
+
+            boolean changed = !Objects.equals(current.getAnswers() == null ? null : current.getAnswers().getId(), item.getAnswerId())
+                    || !Objects.equals(normalizeText(current.getTextAnswer()), normalizeText(item.getTextAnswer()));
+            if (!changed) {
+                continue;
+            }
+
+            AttemptAnswersLog log = new AttemptAnswersLog();
+            log.setQuizAttempt(attempt);
+            log.setQuestions(question);
+            log.setOldAnswer(current.getAnswers());
+            log.setNewAnswer(newAnswer);
+            log.setOldTextAnswer(current.getTextAnswer());
+            log.setNewTextAnswer(item.getTextAnswer());
+            log.setTimeOnQuestion(item.getTimeOnQuestion());
+            attemptAnswersLogRepository.save(log);
+
+            current.setAnswers(newAnswer);
+            current.setTextAnswer(item.getTextAnswer());
+            attemptAnswersRepository.save(current);
+        }
+    }
+
+    private Map<UUID, UUID> toSelectedAnswers(List<AttemptAnswers> attemptAnswers) {
+        Map<UUID, UUID> values = new LinkedHashMap<>();
+        attemptAnswers.stream()
+                .filter(a -> a.getQuestions() != null && a.getAnswers() != null)
+                .forEach(a -> values.put(a.getQuestions().getId(), a.getAnswers().getId()));
+        return values;
+    }
+
+    private Map<UUID, String> toTextAnswers(List<AttemptAnswers> attemptAnswers) {
+        Map<UUID, String> values = new LinkedHashMap<>();
+        attemptAnswers.stream()
+                .filter(a -> a.getQuestions() != null && a.getTextAnswer() != null)
+                .forEach(a -> values.put(a.getQuestions().getId(), a.getTextAnswer()));
+        return values;
+    }
+
+    private String normalizeText(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
+
+    private void validateAttemptOwner(QuizAttempt attempt, HocVien hocVien) {
+        if (!attempt.getHocVien().getId().equals(hocVien.getId())) {
+            throw new SimpleMessageException("Bạn không có quyền truy cập bài làm này");
+        }
+    }
+
+    private void ensureAttemptOpen(QuizAttempt attempt) {
+        if (Boolean.TRUE.equals(attempt.getStatus())) {
+            throw new AlreadySubmittedException("Bài thi này đã được nộp rồi");
+        }
+        Quiz quiz = attempt.getQuiz();
+        LocalDateTime now = LocalDateTime.now();
+        if (quiz.getThoiGianKetThuc() != null && now.isAfter(quiz.getThoiGianKetThuc())) {
+            throw new QuizNotOpenException("Đã hết thời hạn làm bài");
+        }
+    }
+
+    private Integer calculateUsedTime(Quiz quiz, QuizAttempt attempt, Integer remainingTime) {
+        if (quiz.getThoiGianLam() == null || quiz.getThoiGianLam() <= 0 || remainingTime == null) {
+            return attempt.getUsedTime();
+        }
+        return Math.max(0, quiz.getThoiGianLam() * SECONDS_PER_MINUTE - remainingTime);
+    }
+
+    private void logAttempt(QuizAttempt attempt, AttemptActionEnum action, Questions question, String value, String eventData) {
+        QuizAttemptLog log = new QuizAttemptLog();
+        log.setQuizAttempt(attempt);
+        log.setAction(action);
+        log.setQuestions(question);
+        log.setValue(value);
+        log.setEventData(eventData);
+        quizAttemptLogRepository.save(log);
     }
 }

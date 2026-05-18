@@ -14,7 +14,7 @@ public class StaticPaymentMethodProvider implements PaymentMethodProvider {
     private final Map<String, String> supportedMethods;
 
     public StaticPaymentMethodProvider(
-            @Value("${student.payment.methods:VI_DIEN_TU=Thanh toan qua vi dien tu,NGAN_HANG=Thanh toan qua ngan hang,THE_NOI_DIA=Thanh toan qua the noi dia}")
+            @Value("${student.payment.methods:VI_DIEN_TU=Vi dien tu (MoMo/ZaloPay/VNPay),CHUYEN_KHOAN=Chuyen khoan ngan hang,THE_NOI_DIA=The noi dia ATM (phi 3000 VND),THE_QUOC_TE=The quoc te Visa/Mastercard (phi 5000 VND)}")
             String configuredMethods) {
         this.supportedMethods = parseConfiguredMethods(configuredMethods);
     }

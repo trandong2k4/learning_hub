@@ -16,6 +16,18 @@ import java.util.UUID;
 @Repository
 public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi, UUID> {
 
+    interface InvoiceCandidateProjection {
+        UUID getHocVienId();
+
+        String getMaHocVien();
+
+        String getHocVienName();
+
+        String getHocVienEmail();
+
+        Long getTongSoTinChi();
+    }
+
     @Query("""
             SELECT new com.university.dto.response.admin.DangKyTinChiAdminResponseDTO(
                 d.id,
@@ -163,51 +175,58 @@ public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi,
             """)
     boolean daHocMonTienQuyet(@Param("hocVienId") UUID hocVienId, @Param("monHocId") UUID monHocId);
 
-    @Query("""
-            SELECT CASE WHEN COUNT(d) > 0 THEN true ELSE false END
-            FROM DangKyTinChi d
-            JOIN d.lopHocPhan lhp
-            JOIN lhp.dLichs lich
-            JOIN lich.gioHoc gh
-            WHERE d.hocVien.id = :hocVienId
+    @Query(value = """
+            SELECT CASE WHEN COUNT(dktc.id) > 0 THEN TRUE ELSE FALSE END
+            FROM dang_ky_tin_chi dktc
+            JOIN lop_hoc_phan lhp1 ON lhp1.id = dktc.lop_hoc_phan_id
+            JOIN lich l1 ON l1.lop_hoc_phan_id = lhp1.id
+            JOIN gio_hoc gh1 ON gh1.id = l1.gio_hoc_id
+            WHERE dktc.hoc_vien_id = :hocVienId
             AND EXISTS (
-                SELECT 1 FROM LopHocPhan l2
-                JOIN l2.dLichs lich2
-                JOIN lich2.gioHoc gh2
-                WHERE l2.id = :lopHocPhanId
-                AND FUNCTION('DAYOFWEEK', lich.ngayHoc) = FUNCTION('DAYOFWEEK', lich2.ngayHoc)
-                AND gh.thoiGianBatDau < gh2.thoiGianKetThuc
-                AND gh.thoiGianKetThuc > gh2.thoiGianBatDau
+                SELECT 1
+                FROM lop_hoc_phan lhp2
+                JOIN lich l2 ON l2.lop_hoc_phan_id = lhp2.id
+                JOIN gio_hoc gh2 ON gh2.id = l2.gio_hoc_id
+                WHERE lhp2.id = :lopHocPhanId
+                AND EXTRACT(DOW FROM l1.ngay_hoc) = EXTRACT(DOW FROM l2.ngay_hoc)
+                AND gh1.thoi_gian_bat_dau < gh2.thoi_gian_ket_thuc
+                AND gh1.thoi_gian_ket_thuc > gh2.thoi_gian_bat_dau
             )
-            """)
+            """, nativeQuery = true)
     boolean existsTrungLichFull(@Param("hocVienId") UUID hocVienId, @Param("lopHocPhanId") UUID lopHocPhanId);
 
-    @Query("""
-            SELECT CASE WHEN COUNT(d) > 0 THEN true ELSE false END
-            FROM DangKyTinChi d
-            JOIN d.lopHocPhan lhp
-            JOIN lhp.dLichs lich
-            JOIN lich.gioHoc gh
-            WHERE d.hocVien.id = :hocVienId
-            AND d.id <> :excludeId
+    @Query(value = """
+            SELECT CASE WHEN COUNT(dktc.id) > 0 THEN TRUE ELSE FALSE END
+            FROM dang_ky_tin_chi dktc
+            JOIN lop_hoc_phan lhp1 ON lhp1.id = dktc.lop_hoc_phan_id
+            JOIN lich l1 ON l1.lop_hoc_phan_id = lhp1.id
+            JOIN gio_hoc gh1 ON gh1.id = l1.gio_hoc_id
+            WHERE dktc.hoc_vien_id = :hocVienId
+            AND dktc.id <> :excludeId
             AND EXISTS (
-                SELECT 1 FROM LopHocPhan l2
-                JOIN l2.dLichs lich2
-                JOIN lich2.gioHoc gh2
-                WHERE l2.id = :lopHocPhanId
-                AND FUNCTION('DAYOFWEEK', lich.ngayHoc) = FUNCTION('DAYOFWEEK', lich2.ngayHoc)
-                AND gh.thoiGianBatDau < gh2.thoiGianKetThuc
-                AND gh.thoiGianKetThuc > gh2.thoiGianBatDau
+                SELECT 1
+                FROM lop_hoc_phan lhp2
+                JOIN lich l2 ON l2.lop_hoc_phan_id = lhp2.id
+                JOIN gio_hoc gh2 ON gh2.id = l2.gio_hoc_id
+                WHERE lhp2.id = :lopHocPhanId
+                AND EXTRACT(DOW FROM l1.ngay_hoc) = EXTRACT(DOW FROM l2.ngay_hoc)
+                AND gh1.thoi_gian_bat_dau < gh2.thoi_gian_ket_thuc
+                AND gh1.thoi_gian_ket_thuc > gh2.thoi_gian_bat_dau
             )
-            """)
+            """, nativeQuery = true)
     boolean existsTrungLichFullExcludingId(
             @Param("hocVienId") UUID hocVienId,
             @Param("lopHocPhanId") UUID lopHocPhanId,
             @Param("excludeId") UUID excludeId);
 
+    long countByIdIn(List<UUID> ids);
+
     void deleteAllByIdIn(List<UUID> ids);
 
     boolean existsByHocVienId(UUID hocVienId);
+
+    @Query("SELECT DISTINCT d.hocVien.id FROM DangKyTinChi d WHERE d.hocVien.id IN :hocVienIds")
+    List<UUID> findHocVienIdsHavingDangKy(@org.springframework.data.repository.query.Param("hocVienIds") List<UUID> hocVienIds);
 
     @Query("""
             SELECT d.id AS id,
@@ -251,6 +270,23 @@ public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi,
     List<HocPhiAdminResponseDTO.DangKyTinChiItem> findDangKyTinChiByHocKi(@Param("hocKiId") UUID hocKiId);
 
     @Query("""
+            SELECT hv.id AS hocVienId,
+                   hv.maHocVien AS maHocVien,
+                   u.hoTen AS hocVienName,
+                   u.email AS hocVienEmail,
+                   COALESCE(SUM(mh.soTinChi), 0) AS tongSoTinChi
+            FROM DangKyTinChi d
+            JOIN d.lopHocPhan lhp
+            JOIN lhp.monHoc mh
+            JOIN d.hocVien hv
+            JOIN hv.users u
+            WHERE lhp.hocKi.id = :hocKiId
+            GROUP BY hv.id, hv.maHocVien, u.hoTen, u.email
+            ORDER BY hv.maHocVien ASC
+            """)
+    List<InvoiceCandidateProjection> findInvoiceCandidatesByHocKi(@Param("hocKiId") UUID hocKiId);
+
+    @Query("""
             SELECT d.id AS id,
                    hv.id AS hocVienId,
                    hv.maHocVien AS hocVienMa,
@@ -285,7 +321,7 @@ public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi,
             JOIN lhp.monHoc mh
             JOIN d.hocVien hv
             GROUP BY lhp.hocKi.id, lhp.hocKi.maHocKi, lhp.hocKi.tenHocKi, YEAR(lhp.hocKi.ngayBatDau)
-            ORDER BY namHoc DESC, lhp.hocKi.ngayBatDau DESC
+            ORDER BY MAX(lhp.hocKi.ngayBatDau) DESC
             """)
     List<HocPhiAdminResponseDTO.DangKyTinChiTheoHocKi> findDangKyTinChiTongHopTheoHocKi();
 
@@ -341,26 +377,13 @@ public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi,
     List<DangKyTinChiAdminResponseDTO> findAllWithDetails();
 
     @Query("""
-            SELECT d.id AS id,
-                   hv.id AS hocVienId,
-                   hv.maHocVien AS hocVienMa,
-                   hv.users.hoTen AS hoTen,
-                   hv.users.email AS email,
-                   hv.users.soDienThoai AS soDienThoai,
-                   lhp.id AS lopHocPhanId,
-                   lhp.maLopHocPhan AS maLopHocPhan,
-                   mh.tenMonHoc AS tenMonHoc,
-                   mh.soTinChi AS soTinChi,
-                   mh.soTinChi * 700000.0 AS tienHocPhi,
-                   lhp.hocKi.id AS hocKiId,
-                   lhp.hocKi.maHocKi AS hocKiMa,
-                   lhp.hocKi.tenHocKi AS hocKiTen,
-                   lhp.hanDangKy AS hanDangKy,
-                   lhp.hanHuy AS hanHuy,
-                   lhp.soLuongToiDa AS soLuongToiDa,
-                   lhp.trangThai AS trangThaiLopHocPhan,
-                   COUNT(d2.id) AS soLuongDaDangKy,
-                   d.createdAt AS createdAt
+            SELECT new com.university.dto.response.admin.DangKyTinChiAdminResponseDTO(
+                   d.id, hv.id, hv.maHocVien, hv.users.hoTen, hv.users.email, hv.users.soDienThoai,
+                   lhp.id, lhp.maLopHocPhan, mh.tenMonHoc, mh.soTinChi, mh.soTinChi * 700000.0,
+                   lhp.hocKi.id, lhp.hocKi.maHocKi, lhp.hocKi.tenHocKi,
+                   lhp.hanDangKy, lhp.hanHuy, lhp.soLuongToiDa, lhp.trangThai,
+                   COUNT(d2.id), d.createdAt
+                   )
             FROM DangKyTinChi d
             JOIN d.lopHocPhan lhp
             JOIN lhp.monHoc mh
@@ -377,26 +400,13 @@ public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi,
     List<DangKyTinChiAdminResponseDTO> findAllByHocKiIdWithDetails(@Param("hocKiId") UUID hocKiId);
 
     @Query("""
-            SELECT d.id AS id,
-                   hv.id AS hocVienId,
-                   hv.maHocVien AS hocVienMa,
-                   hv.users.hoTen AS hoTen,
-                   hv.users.email AS email,
-                   hv.users.soDienThoai AS soDienThoai,
-                   lhp.id AS lopHocPhanId,
-                   lhp.maLopHocPhan AS maLopHocPhan,
-                   mh.tenMonHoc AS tenMonHoc,
-                   mh.soTinChi AS soTinChi,
-                   mh.soTinChi * 700000.0 AS tienHocPhi,
-                   lhp.hocKi.id AS hocKiId,
-                   lhp.hocKi.maHocKi AS hocKiMa,
-                   lhp.hocKi.tenHocKi AS hocKiTen,
-                   lhp.hanDangKy AS hanDangKy,
-                   lhp.hanHuy AS hanHuy,
-                   lhp.soLuongToiDa AS soLuongToiDa,
-                   lhp.trangThai AS trangThaiLopHocPhan,
-                   COUNT(d2.id) AS soLuongDaDangKy,
-                   d.createdAt AS createdAt
+            SELECT new com.university.dto.response.admin.DangKyTinChiAdminResponseDTO(
+                   d.id, hv.id, hv.maHocVien, hv.users.hoTen, hv.users.email, hv.users.soDienThoai,
+                   lhp.id, lhp.maLopHocPhan, mh.tenMonHoc, mh.soTinChi, mh.soTinChi * 700000.0,
+                   lhp.hocKi.id, lhp.hocKi.maHocKi, lhp.hocKi.tenHocKi,
+                   lhp.hanDangKy, lhp.hanHuy, lhp.soLuongToiDa, lhp.trangThai,
+                   COUNT(d2.id), d.createdAt
+                   )
             FROM DangKyTinChi d
             JOIN d.lopHocPhan lhp
             JOIN lhp.monHoc mh
@@ -413,26 +423,13 @@ public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi,
     List<DangKyTinChiAdminResponseDTO> findAllByLopHocPhanIdWithDetails(@Param("lopHocPhanId") UUID lopHocPhanId);
 
     @Query("""
-            SELECT d.id AS id,
-                   hv.id AS hocVienId,
-                   hv.maHocVien AS hocVienMa,
-                   hv.users.hoTen AS hoTen,
-                   hv.users.email AS email,
-                   hv.users.soDienThoai AS soDienThoai,
-                   lhp.id AS lopHocPhanId,
-                   lhp.maLopHocPhan AS maLopHocPhan,
-                   mh.tenMonHoc AS tenMonHoc,
-                   mh.soTinChi AS soTinChi,
-                   mh.soTinChi * 700000.0 AS tienHocPhi,
-                   lhp.hocKi.id AS hocKiId,
-                   lhp.hocKi.maHocKi AS hocKiMa,
-                   lhp.hocKi.tenHocKi AS hocKiTen,
-                   lhp.hanDangKy AS hanDangKy,
-                   lhp.hanHuy AS hanHuy,
-                   lhp.soLuongToiDa AS soLuongToiDa,
-                   lhp.trangThai AS trangThaiLopHocPhan,
-                   COUNT(d2.id) AS soLuongDaDangKy,
-                   d.createdAt AS createdAt
+            SELECT new com.university.dto.response.admin.DangKyTinChiAdminResponseDTO(
+                   d.id, hv.id, hv.maHocVien, hv.users.hoTen, hv.users.email, hv.users.soDienThoai,
+                   lhp.id, lhp.maLopHocPhan, mh.tenMonHoc, mh.soTinChi, mh.soTinChi * 700000.0,
+                   lhp.hocKi.id, lhp.hocKi.maHocKi, lhp.hocKi.tenHocKi,
+                   lhp.hanDangKy, lhp.hanHuy, lhp.soLuongToiDa, lhp.trangThai,
+                   COUNT(d2.id), d.createdAt
+                   )
             FROM DangKyTinChi d
             JOIN d.lopHocPhan lhp
             JOIN lhp.monHoc mh
@@ -449,26 +446,13 @@ public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi,
     List<DangKyTinChiAdminResponseDTO> findAllByHocVienIdWithDetails(@Param("hocVienId") UUID hocVienId);
 
     @Query("""
-            SELECT d.id AS id,
-                   hv.id AS hocVienId,
-                   hv.maHocVien AS hocVienMa,
-                   hv.users.hoTen AS hoTen,
-                   hv.users.email AS email,
-                   hv.users.soDienThoai AS soDienThoai,
-                   lhp.id AS lopHocPhanId,
-                   lhp.maLopHocPhan AS maLopHocPhan,
-                   mh.tenMonHoc AS tenMonHoc,
-                   mh.soTinChi AS soTinChi,
-                   mh.soTinChi * 700000.0 AS tienHocPhi,
-                   lhp.hocKi.id AS hocKiId,
-                   lhp.hocKi.maHocKi AS hocKiMa,
-                   lhp.hocKi.tenHocKi AS hocKiTen,
-                   lhp.hanDangKy AS hanDangKy,
-                   lhp.hanHuy AS hanHuy,
-                   lhp.soLuongToiDa AS soLuongToiDa,
-                   lhp.trangThai AS trangThaiLopHocPhan,
-                   COUNT(d2.id) AS soLuongDaDangKy,
-                   d.createdAt AS createdAt
+            SELECT new com.university.dto.response.admin.DangKyTinChiAdminResponseDTO(
+                   d.id, hv.id, hv.maHocVien, hv.users.hoTen, hv.users.email, hv.users.soDienThoai,
+                   lhp.id, lhp.maLopHocPhan, mh.tenMonHoc, mh.soTinChi, mh.soTinChi * 700000.0,
+                   lhp.hocKi.id, lhp.hocKi.maHocKi, lhp.hocKi.tenHocKi,
+                   lhp.hanDangKy, lhp.hanHuy, lhp.soLuongToiDa, lhp.trangThai,
+                   COUNT(d2.id), d.createdAt
+                   )
             FROM DangKyTinChi d
             JOIN d.lopHocPhan lhp
             JOIN lhp.monHoc mh
@@ -502,7 +486,7 @@ public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi,
                    lhp.hanDangKy AS hanDangKy
             FROM LopHocPhan lhp
             JOIN lhp.monHoc mh
-            LEFT JOIN dDangKyTinChis d
+            LEFT JOIN lhp.dDangKyTinChis d
             WHERE lhp.trangThai = 'MO_DANG_KY'
             GROUP BY lhp.id, lhp.maLopHocPhan, mh.tenMonHoc, mh.soTinChi,
                      lhp.hocKi.maHocKi, lhp.hocKi.tenHocKi, YEAR(lhp.hocKi.ngayBatDau),
@@ -520,33 +504,19 @@ public interface DangKyTinChiAdminRepository extends JpaRepository<DangKyTinChi,
                    hv.nganh.tenNganh AS nganhTen
             FROM HocVien hv
             JOIN hv.users
-            LEFT JOIN hv.dHocPhis hp
             WHERE hv.ngayTotNghiep IS NULL
             ORDER BY hv.maHocVien ASC
             """)
     List<DangKyTinChiAdminResponseDTO.HocVienDangKyView> findHocVienDangKy();
 
     @Query("""
-            SELECT d.id AS id,
-                   hv.id AS hocVienId,
-                   hv.maHocVien AS hocVienMa,
-                   hv.users.hoTen AS hoTen,
-                   hv.users.email AS email,
-                   hv.users.soDienThoai AS soDienThoai,
-                   lhp.id AS lopHocPhanId,
-                   lhp.maLopHocPhan AS maLopHocPhan,
-                   mh.tenMonHoc AS tenMonHoc,
-                   mh.soTinChi AS soTinChi,
-                   mh.soTinChi * 700000.0 AS tienHocPhi,
-                   lhp.hocKi.id AS hocKiId,
-                   lhp.hocKi.maHocKi AS hocKiMa,
-                   lhp.hocKi.tenHocKi AS hocKiTen,
-                   lhp.hanDangKy AS hanDangKy,
-                   lhp.hanHuy AS hanHuy,
-                   lhp.soLuongToiDa AS soLuongToiDa,
-                   lhp.trangThai AS trangThaiLopHocPhan,
-                   COUNT(d2.id) AS soLuongDaDangKy,
-                   d.createdAt AS createdAt
+            SELECT new com.university.dto.response.admin.DangKyTinChiAdminResponseDTO(
+                   d.id, hv.id, hv.maHocVien, hv.users.hoTen, hv.users.email, hv.users.soDienThoai,
+                   lhp.id, lhp.maLopHocPhan, mh.tenMonHoc, mh.soTinChi, mh.soTinChi * 700000.0,
+                   lhp.hocKi.id, lhp.hocKi.maHocKi, lhp.hocKi.tenHocKi,
+                   lhp.hanDangKy, lhp.hanHuy, lhp.soLuongToiDa, lhp.trangThai,
+                   COUNT(d2.id), d.createdAt
+                   )
             FROM DangKyTinChi d
             JOIN d.lopHocPhan lhp
             JOIN lhp.monHoc mh

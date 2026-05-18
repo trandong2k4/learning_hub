@@ -4,6 +4,7 @@ import com.university.annotation.RequirePermission;
 import com.university.dto.request.admin.NhanVienAdminRequestDTO;
 import com.university.dto.request.admin.NhanVienSimpleRequestDTO;
 import com.university.dto.request.admin.warrap.NhanVienCreateRequestDTO;
+import com.university.dto.response.admin.BatchDeleteResultDTO;
 import com.university.dto.response.admin.ExcelImportResult;
 import com.university.dto.response.admin.NhanVienAdminResponseDTO;
 import com.university.dto.response.admin.UsersAdminResponseDTO;
@@ -95,8 +96,8 @@ public class NhanVienAdminController {
     }
 
     @DeleteMapping("/delete-list")
-    public ResponseEntity<Void> deleteList(@RequestBody List<UUID> ids) {
-        nhanVienAdminService.deleteAllByList(ids);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<BatchDeleteResultDTO> deleteList(@RequestBody List<UUID> ids) {
+        BatchDeleteResultDTO result = nhanVienAdminService.deleteAllByList(ids);
+        return ResponseEntity.ok(result);
     }
 }

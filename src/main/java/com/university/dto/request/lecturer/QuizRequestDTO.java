@@ -34,7 +34,22 @@ public class QuizRequestDTO {
 
     private Boolean trinhTrang;
 
-    @NotEmpty(message = "Phải có ít nhất 1 câu hỏi")
     @Valid
     private List<QuestionRequestDTO> questions;
+
+    private String quizType;
+
+    private List<java.util.UUID> exerciseIds;
+
+    private Integer randomQuestionCount;
+
+    private String randomQuestionTypes;
+
+    private Boolean shuffleQuestions;
+
+    private Boolean shuffleAnswers;
+
+    private String showResult;
+
+    private Float passScore;
 }

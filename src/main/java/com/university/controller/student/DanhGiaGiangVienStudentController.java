@@ -20,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/student/danh-gia-giang-vien")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('STUDENT')")
+@PreAuthorize("hasAuthority('ROLE_student')")
 @RequirePermission("STU_LECTURER_REVIEW_VIEW")
 public class DanhGiaGiangVienStudentController {
 

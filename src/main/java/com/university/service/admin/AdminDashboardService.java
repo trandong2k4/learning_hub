@@ -41,8 +41,6 @@ public class AdminDashboardService {
                 CompletableFuture<Long> lopHpFuture = CompletableFuture.supplyAsync(lopHocPhanRepository::count);
                 CompletableFuture<Double> hocPhiTongFuture = CompletableFuture
                                 .supplyAsync(hocPhiRepository::getTongSoTien);
-                CompletableFuture<Double> hocPhiDaThuFuture = CompletableFuture
-                                .supplyAsync(hocPhiRepository::getTongSoTien);
                 CompletableFuture<List<HocPhiAdminResponseDTO.DashboardTheoThang>> revenueFuture = CompletableFuture
                                 .supplyAsync(hocPhiRepository::getDashboardTheoThang);
                 CompletableFuture<List<Object[]>> hocVienTheoNamFuture = CompletableFuture
@@ -62,7 +60,7 @@ public class AdminDashboardService {
 
                 CompletableFuture.allOf(
                                 usersFuture, hocVienFuture, giangVienFuture, lopHpFuture,
-                                hocPhiTongFuture, hocPhiDaThuFuture, revenueFuture,
+                                hocPhiTongFuture, revenueFuture,
                                 hocVienTheoNamFuture, hocVienTheoNganhFuture,
                                 recentLienHeFuture, recentThongBaoFuture).join();
 
@@ -130,7 +128,8 @@ public class AdminDashboardService {
                         hoatDongList = hoatDongList.subList(0, 10);
                 }
 
-                double tongHocPhi = hocPhiTongFuture.join() != null ? hocPhiTongFuture.join() : 0.0;
+                Double tongHocPhiRaw = hocPhiTongFuture.join();
+                double tongHocPhi = tongHocPhiRaw != null ? tongHocPhiRaw : 0.0;
 
                 return AdminDashboardResponseDTO.builder()
                                 .tongNguoiDung(usersFuture.join())

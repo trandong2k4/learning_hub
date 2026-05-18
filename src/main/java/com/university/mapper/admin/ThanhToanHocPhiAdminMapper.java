@@ -19,8 +19,10 @@ public class ThanhToanHocPhiAdminMapper {
         }
 
         ThanhToanHocPhi entity = new ThanhToanHocPhi();
-        entity.setNgayThanhToan(dto.getNgayThanhToan());
+        entity.setNgayThanhToan(
+                dto.getNgayThanhToan() != null ? dto.getNgayThanhToan().atStartOfDay() : LocalDateTime.now());
         entity.setFileChungTu(dto.getFileChungTu());
+        entity.setPhuongThucThanhToan(dto.getPhuongThucThanhToan());
 
         // Thiết lập thời gian tạo, nếu DTO không có thì lấy thời gian hiện tại
         entity.setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt() : LocalDateTime.now());
@@ -39,8 +41,10 @@ public class ThanhToanHocPhiAdminMapper {
             return;
         }
 
-        entity.setNgayThanhToan(dto.getNgayThanhToan());
+        entity.setNgayThanhToan(
+                dto.getNgayThanhToan() != null ? dto.getNgayThanhToan().atStartOfDay() : entity.getNgayThanhToan());
         entity.setFileChungTu(dto.getFileChungTu());
+        entity.setPhuongThucThanhToan(dto.getPhuongThucThanhToan());
 
         // Thường createdAt không cập nhật lại, nhưng nếu có field updatedAt bạn có thể
         // set ở đây
