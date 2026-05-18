@@ -120,8 +120,25 @@ public class LecturerQuizService {
                 .orElseThrow(() -> new RuntimeException("Quiz không tồn tại."));
         validationService.validateLecturerAssignment(userId, quiz.getLopHocPhan().getId());
 
-        if (quiz.getThoiGianBatDau() != null && quiz.getThoiGianBatDau().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Không thể sửa bài kiểm tra đã bắt đầu.");
+        if (quiz.getThoiGianKetThuc() != null && quiz.getThoiGianKetThuc().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Không thể sửa bài kiểm tra đã kết thúc.");
+        }
+
+        boolean hasStarted = quiz.getThoiGianBatDau() != null
+                && quiz.getThoiGianBatDau().isBefore(LocalDateTime.now());
+
+        if (hasStarted) {
+            // Chỉ cho phép cập nhật các trường không ảnh hưởng đến câu hỏi
+            if (request.getTrinhTrang() != null) quiz.setTrinhTrang(request.getTrinhTrang());
+            if (request.getSoLanLam() != null) quiz.setSoLanLam(request.getSoLanLam());
+            if (request.getShowResult() != null && !request.getShowResult().isBlank()) {
+                quiz.setShowResult(request.getShowResult());
+            }
+            Quiz savedQuiz = quizRepository.save(quiz);
+            List<QuestionResponseDTO> questionDTOs = getQuestionsWithAnswers(savedQuiz).stream()
+                    .map(this::toQuestionResponseDTO)
+                    .collect(Collectors.toList());
+            return toQuizResponseDTO(savedQuiz, questionDTOs);
         }
 
         quiz.setTieuDe(request.getTieuDe());
@@ -148,8 +165,8 @@ public class LecturerQuizService {
                 .orElseThrow(() -> new RuntimeException("Quiz không tồn tại."));
         validationService.validateLecturerAssignment(userId, quiz.getLopHocPhan().getId());
 
-        if (quiz.getThoiGianBatDau() != null && quiz.getThoiGianBatDau().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Không thể xóa bài kiểm tra đã bắt đầu.");
+        if (quiz.getThoiGianKetThuc() != null && quiz.getThoiGianKetThuc().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Không thể xóa bài kiểm tra đã kết thúc.");
         }
         quizRepository.delete(quiz);
     }
